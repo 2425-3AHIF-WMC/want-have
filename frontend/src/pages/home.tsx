@@ -1,5 +1,5 @@
-import Hero from '../components/Hero';
-import CategoryCard from '../components/CategoryCard';
+import Hero from '../components/hero';
+import CategoryCard from '../components/category-card';
 import React from 'react';
 
 const categories = ['Electronics', 'Clothing', 'Furniture', 'Vehicles', 'Books', 'Appliances'];
