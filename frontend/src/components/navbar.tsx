@@ -1,13 +1,33 @@
 import React from "react";
+import {
+    FaSearch,
+    FaShoppingCart,
+    FaUser
+} from "react-icons/fa";
 
-const Navbar: React.FC = () => (
-    <nav className="flex justify-between items-center p-4 bg-white shadow">
-        <h1 className="text-2xl font-bold text-blue-600">Want-Have</h1>
-        <div>
-            <button className="mr-4">Login</button>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded">Post Item</button>
-        </div>
-    </nav>
-);
+const Navbar: React.FC = () => {
+    return (
+        <header className="navbar">
+            <div className="logo">Zay</div>
+            <nav className="nav-links">
+                <a href="#">Home</a>
+                <a href="#">About</a>
+                <a href="#">Shop</a>
+                <a href="#">Contact</a>
+            </nav>
+            <div className="nav-icons">
+                <FaSearch />
+                <div className="icon-badge">
+                    <FaShoppingCart />
+                    <span className="badge">7</span>
+                </div>
+                <div className="icon-badge">
+                    <FaUser />
+                    <span className="badge">+99</span>
+                </div>
+            </div>
+        </header>
+    );
+};
 
 export default Navbar;
