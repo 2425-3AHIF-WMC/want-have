@@ -145,7 +145,7 @@ const ProductFilter = ({ onFilterChange }: ProductFilterProps) => {
                                 min={0}
                                 max={500}
                                 step={5}
-                                onValueChange={(values) => setPriceRange(values as PriceRange)}
+                                onValueChange={(values: PriceRange) => setPriceRange(values as PriceRange)}
                                 className="py-4"
                             />
                         </div>
