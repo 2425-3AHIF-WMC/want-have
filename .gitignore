@@ -1,3 +1,11 @@
-node_modules/
-dist/
-build/
+# Ignore everything
+*
+
+# But NOT these files (force add)
+!.gitignore
+!index.html
+!static/
+!asset-manifest.json
+!manifest.json
+!favicon.ico
+!robots.txt
