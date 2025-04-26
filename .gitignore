@@ -1,3 +1,7 @@
 node_modules/
-.idea/
+build/
+static/
 dist/
+.idea/
+index.html
+asset-manifest.json
