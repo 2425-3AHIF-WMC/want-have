@@ -1,5 +1,7 @@
 node_modules/
 dist/
-build/
 .idea/
+build/
 static/
+index.html
+asset-manifest.json
