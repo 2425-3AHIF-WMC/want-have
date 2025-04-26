@@ -6,10 +6,10 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+} from "./ui/select";
+import { Label } from "./ui/label";
+import { Button } from "./ui/button";
+import { Slider } from "./ui/slider";
 import { Filter } from "lucide-react";
 
 type PriceRange = [number, number];

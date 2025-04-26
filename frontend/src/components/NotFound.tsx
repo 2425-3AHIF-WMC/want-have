@@ -1,10 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "./ui/button";
 import { Home } from "lucide-react";
 import { Link } from "react-router-dom";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
 
 const NotFound = () => {
     const location = useLocation();

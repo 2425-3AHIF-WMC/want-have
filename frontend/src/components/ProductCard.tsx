@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "./ui/card";
 import { Star } from "lucide-react";
 
 export type ProductPrice = number | "Zu verschenken";

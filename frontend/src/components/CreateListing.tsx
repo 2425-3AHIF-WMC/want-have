@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
 import {
     Select,
     SelectContent,
@@ -13,14 +13,14 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue
-} from "@/components/ui/select";
+} from "./ui/select";
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle
-} from "@/components/ui/card";
+} from "./ui/card";
 import { Upload, X, Image } from "lucide-react";
 
 const categories = [
