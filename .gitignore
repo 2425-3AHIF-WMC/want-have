@@ -1,11 +1,7 @@
-# Ignore everything
-*
-
-# But NOT these files (force add)
-!.gitignore
-!index.html
-!static/
-!asset-manifest.json
-!manifest.json
-!favicon.ico
-!robots.txt
+node_modules/
+build/
+static/
+dist/
+.idea/
+index.html
+asset-manifest.json
