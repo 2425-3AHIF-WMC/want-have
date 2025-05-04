@@ -1,30 +1,19 @@
 import express from 'express';
 import pool from './database/pool';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const app = express();
-const port = 3000;
-const databaseUrl = process.env.DATABASE_URL;
+const port = process.env.PORT || 3000;
 
-app.use(express.json());
-
-if (!databaseUrl) {
-    console.error('Database URL is missing from environment variables.');
-    process.exit(1);
-}
-
-app.get('/api/users', async (req, res) => {
+app.get('/test-db', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM "users"');
-        res.json(result.rows);
+        const result = await pool.query('SELECT NOW()');
+        res.json(result.rows[0]);
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Database query failed');
+        console.error('Database error:', err);
+        res.status(500).json({ error: 'Database error' });
     }
 });
 
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Server is running on port ${port}`);
 });
