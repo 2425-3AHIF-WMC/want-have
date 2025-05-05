@@ -28,34 +28,34 @@ chatRouter.get('/:userId', async (req, res) => {
 });
 
 // Create new chat
-chatRouter.post('/', async (req, res) => {
+chatRouter.post('/start', async (req, res) => {
     const { user1_id, user2_id } = req.body;
-
-    // Validate input fields
     if (!user1_id || !user2_id) {
-        res.status(StatusCodes.BAD_REQUEST).json({ error: 'User1 and User2 are required' });
+        res.status(StatusCodes.BAD_REQUEST).json({ error: 'Missing user IDs' });
         return;
     }
 
-    // Check if both users exist
     try {
-        const user1Check = await pool.query('SELECT * FROM users WHERE id = $1', [user1_id]);
-        const user2Check = await pool.query('SELECT * FROM users WHERE id = $1', [user2_id]);
+        // Check if chat already exists
+        const existingChat = await pool.query(
+            `SELECT * FROM chats WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)`,
+            [user1_id, user2_id]
+        );
 
-        if (user1Check.rows.length === 0 || user2Check.rows.length === 0) {
-            res.status(StatusCodes.NOT_FOUND).json({ error: 'One or both users not found' });
+        if (existingChat.rows.length > 0) {
+            res.status(StatusCodes.OK).json({ chat: existingChat.rows[0] });
             return;
         }
 
-        // Insert the new chat
-        const result = await pool.query(
-            'INSERT INTO chats (user1_id, user2_id) VALUES ($1, $2) RETURNING *',
+        // Create new chat
+        const newChat = await pool.query(
+            `INSERT INTO chats (user1_id, user2_id) VALUES ($1, $2) RETURNING *`,
             [user1_id, user2_id]
         );
-        res.status(StatusCodes.CREATED).json(result.rows[0]);
+
+        res.status(StatusCodes.CREATED).json({ chat: newChat.rows[0] });
     } catch (err) {
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to create chat' });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: err });
     }
 });
 
-export default chatRouter;

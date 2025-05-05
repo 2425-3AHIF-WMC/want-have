@@ -41,5 +41,3 @@ userRouter.post('/', async (req, res) => {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to create user' });
     }
 });
-
-export default userRouter;

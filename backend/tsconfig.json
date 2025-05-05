@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "target": "ES6",                       // ECMAScript target version
     "module": "CommonJS",                  // Module code generation method (CommonJS for Node.js)
     "esModuleInterop": true,               // Enables compatibility with ES modules
@@ -13,7 +14,7 @@
     }
   },
   "include": [
-    "src/**/*.ts"                          // Specifies the files to include (all TypeScript files under 'src' folder)
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",                        // Exclude 'node_modules' from the compilation process

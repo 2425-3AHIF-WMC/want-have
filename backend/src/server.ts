@@ -1,9 +1,10 @@
 import express from 'express';
 import pool from './db/pool';
-import userRouter from "./routes/userRouter";
-import adRouter from "./routes/adRouter";
-import chatRouter from "./routes/chatRouter";
-import messageRouter from "./routes/messageRouter";
+import {userRouter} from "./routes/userRouter";
+import {adRouter} from "./routes/adRouter";
+import {chatRouter} from "./routes/chatRouter";
+import {messageRouter} from "./routes/messageRouter";
+import {StatusCodes} from "http-status-codes";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -21,7 +22,7 @@ app.get('/test-db', async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error('Database error:', err);
-        res.status(500).json({ error: 'Database error' });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error' });
     }
 });
 

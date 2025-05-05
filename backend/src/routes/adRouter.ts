@@ -42,5 +42,3 @@ adRouter.post('/', async (req, res) => {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to create ad' });
     }
 });
-
-export default adRouter;
