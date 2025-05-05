@@ -1,11 +1,11 @@
-import express from 'express';
+import Router from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
 
-const router = express.Router();
+export const adRouter = Router();
 
 // Get all ads
-router.get('/', async (_req, res) => {
+adRouter.get('/', async (_req, res) => {
     try {
         const result = await pool.query('SELECT * FROM ads ORDER BY created_at DESC');
         res.json(result.rows);
@@ -15,7 +15,7 @@ router.get('/', async (_req, res) => {
 });
 
 // Create a new ad
-router.post('/', async (req, res) => {
+adRouter.post('/', async (req, res) => {
     const { title, description, price, owner_id } = req.body;
 
     // Validate input fields
@@ -43,4 +43,4 @@ router.post('/', async (req, res) => {
     }
 });
 
-export default router;
+export default adRouter;

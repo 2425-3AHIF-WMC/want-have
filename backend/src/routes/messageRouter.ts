@@ -1,11 +1,11 @@
-import express from 'express';
+import Router from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
 
-const router = express.Router();
+export const messageRouter = Router();
 
 // Get all messages for a chat
-router.get('/:chatId', async (req, res) => {
+messageRouter.get('/:chatId', async (req, res) => {
     const { chatId } = req.params;
 
     // Check if the chat exists
@@ -28,7 +28,7 @@ router.get('/:chatId', async (req, res) => {
 });
 
 // Send a message
-router.post('/', async (req, res) => {
+messageRouter.post('/', async (req, res) => {
     const { chat_id, sender_id, content } = req.body;
 
     // Validate input fields
@@ -56,4 +56,4 @@ router.post('/', async (req, res) => {
     }
 });
 
-export default router;
+export default messageRouter;

@@ -1,11 +1,11 @@
-import express from 'express';
+import Router from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
 
-const router = express.Router();
+export const chatRouter = Router();
 
 // Get all chats for a user
-router.get('/:userId', async (req, res) => {
+chatRouter.get('/:userId', async (req, res) => {
     const { userId } = req.params;
 
     // Check if the user exists
@@ -28,7 +28,7 @@ router.get('/:userId', async (req, res) => {
 });
 
 // Create new chat
-router.post('/', async (req, res) => {
+chatRouter.post('/', async (req, res) => {
     const { user1_id, user2_id } = req.body;
 
     // Validate input fields
@@ -58,4 +58,4 @@ router.post('/', async (req, res) => {
     }
 });
 
-export default router;
+export default chatRouter;

@@ -1,11 +1,11 @@
-import express from 'express';
+import Router from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
 
-const router = express.Router();
+export const userRouter = Router();
 
 // Get all users
-router.get('/', async (req, res) => {
+userRouter.get('/', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM users');
         res.status(StatusCodes.OK).json(result.rows);
@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.post('/', async (req, res) => {
+userRouter.post('/', async (req, res) => {
     const { username, email, password_hash } = req.body;
 
     // Validate input fields
@@ -42,4 +42,4 @@ router.post('/', async (req, res) => {
     }
 });
 
-export default router;
+export default userRouter;
