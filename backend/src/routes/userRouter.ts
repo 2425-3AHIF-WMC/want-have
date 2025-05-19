@@ -5,7 +5,7 @@ import {StatusCodes} from "http-status-codes";
 export const userRouter = Router();
 
 // Get all users
-userRouter.get('/', async (req, res) => {
+userRouter.get('/', async (_req, res) => {
     try {
         const result = await pool.query('SELECT * FROM users');
         res.status(StatusCodes.OK).json(result.rows);

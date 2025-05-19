@@ -1,6 +1,6 @@
 import {Router, Request, Response, NextFunction} from 'express';
 import pool from '.././db/pool';
-import jwt, {JwtPayload} from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import {StatusCodes} from "http-status-codes";
 import dotenv from 'dotenv';
 
@@ -36,7 +36,7 @@ const authenticateUser = (req: Request, res: Response, next: NextFunction) => {
 messageRouter.post('/:chatId', authenticateUser, async (req, res) => {
     const { content } = req.body;
     const { chatId } = req.params;
-    const { id: sender_id } = req.user;  // User's id from the token
+    const { id: sender_id } = req.user;
 
     if (!content) {
         res.status(StatusCodes.BAD_REQUEST).json({ error: 'Message content is required' });
