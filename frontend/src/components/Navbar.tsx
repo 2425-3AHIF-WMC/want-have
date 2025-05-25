@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 import {
     Bell,
     MessageSquare,
@@ -10,21 +10,39 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-const Navbar = () => {
+const Navbar = forwardRef((props, ref) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const navigate = useNavigate();
+
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Methode, die von außen aufgerufen werden kann, um Fokus zu setzen
+    useImperativeHandle(ref, () => ({
+        focusSearchInput() {
+            searchInputRef.current?.focus();
+        }
+    }));
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
 
     const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        console.log("Suche nach:", searchQuery);
-        // Hier später die Suche implementieren
+        e.preventDefault();  // Verhindert, dass die Seite neu lädt
+        console.log("Suche gestartet mit:", searchQuery);  // Zeigt den Suchbegriff in der Konsole an
+
+        if (!searchQuery.trim()) {
+            console.log("Suchbegriff ist leer, Suche wird abgebrochen.");
+            return;  // Suche nicht starten, wenn leer
+        }
+
+        navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);  // Navigation zur Suchseite
     };
+
+
 
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -32,7 +50,9 @@ const Navbar = () => {
                 <div className="flex justify-between items-center py-4">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-2">
-                        <span className="text-2xl font-bold text-marktx-blue-600">Markt<span className="text-marktx-blue-700">X</span></span>
+                        <span className="text-2xl font-bold text-marktx-blue-600">
+                            Markt<span className="text-marktx-blue-700">X</span>
+                        </span>
                     </Link>
 
                     {/* Suchleiste (desktop) */}
@@ -44,8 +64,13 @@ const Navbar = () => {
                                 className="w-full pr-10"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                ref={searchInputRef}
                             />
-                            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <button
+                                type="submit"
+                                className="absolute right-3 top-1/2 -translate-y-1/2"
+                                aria-label="Suche absenden"
+                            >
                                 <Search size={18} className="text-marktx-gray-400" />
                             </button>
                         </form>
@@ -93,8 +118,13 @@ const Navbar = () => {
                             className="w-full pr-10"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            ref={searchInputRef}
                         />
-                        <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <button
+                            type="submit"
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            aria-label="Suche absenden"
+                        >
                             <Search size={18} className="text-marktx-gray-400" />
                         </button>
                     </form>
@@ -126,6 +156,6 @@ const Navbar = () => {
             </div>
         </nav>
     );
-};
+});
 
 export default Navbar;

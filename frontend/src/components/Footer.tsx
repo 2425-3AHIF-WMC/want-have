@@ -10,7 +10,7 @@ const Footer = () => {
                     <div>
                         <h3 className="text-lg font-bold mb-4">MarktX</h3>
                         <p className="text-marktx-gray-500 text-sm">
-                            Die Handelsplattform für Schülerinnen und Schüler der HTL Leonding. Kaufen, verkaufen und tauschen Sie Artikel innerhalb der Schulgemeinschaft.
+                            Die Handelsplattform für Schülerinnen und Schüler der HTL Leonding.
                         </p>
                     </div>
 
@@ -18,23 +18,23 @@ const Footer = () => {
                         <h3 className="text-lg font-bold mb-4">Links</h3>
                         <ul className="space-y-2">
                             <li>
-                                <Link to="/frontend/public" className="text-marktx-blue-600 hover:underline text-sm">
+                                <Link to="/" className="text-marktx-blue-600 hover:underline text-sm">
                                     Startseite
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/categories" className="text-marktx-blue-600 hover:underline text-sm">
-                                    Kategorien
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/free-items" className="text-marktx-blue-600 hover:underline text-sm">
-                                    Zu verschenken
+                                <Link to="/create" className="text-marktx-blue-600 hover:underline text-sm">
+                                    Anzeige erstellen
                                 </Link>
                             </li>
                             <li>
                                 <Link to="/about" className="text-marktx-blue-600 hover:underline text-sm">
                                     Über uns
+                                </Link>
+                            </li>
+                            <li>
+                                <Link to="/contact" className="text-marktx-blue-600 hover:underline text-sm">
+                                    Kontakt
                                 </Link>
                             </li>
                         </ul>

@@ -1,40 +1,50 @@
+import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import ProductFilter from "../components/ProductFilter";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { ArrowRight, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
+import { Link } from "react-router-dom";
 
-// Updated type for the price property
 type ProductPrice = number | "Zu verschenken";
 
-// Dummy-Daten für die Beispiel-Produkte
-const dummyProducts = [
+type Product = {
+    id: string;
+    title: string;
+    price: ProductPrice;
+    imageUrl: string;
+    condition: string;
+    createdAt: Date;
+    seller: { name: string; rating: number };
+    isFree?: boolean;
+    category?: string;
+};
+
+const dummyProducts: Product[] = [
     {
         id: "1",
         title: "Mathematik Schulbuch 5. Klasse",
-        price: "Zu verschenken" as ProductPrice,
-        imageUrl: "https://images.unsplash.com/photo-1588580000645-4562a6d2c839?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        price: "Zu verschenken",
+        imageUrl:
+            "https://images.unsplash.com/photo-1588580000645-4562a6d2c839?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
         condition: "Gut",
         createdAt: new Date(2023, 3, 20),
-        seller: {
-            name: "Marie S.",
-            rating: 4.5,
-        },
+        seller: { name: "Marie S.", rating: 4.5 },
         isFree: true,
+        category: "Schulbücher",
     },
     {
         id: "2",
         title: "Grafiktaschenrechner TI-84",
-        price: 45.99 as ProductPrice,
-        imageUrl: "https://images.unsplash.com/photo-1613834926943-64d32d57cd55?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        price: 45.99,
+        imageUrl:
+            "https://images.unsplash.com/photo-1613834926943-64d32d57cd55?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
         condition: "Wie neu",
         createdAt: new Date(),
-        seller: {
-            name: "Thomas H.",
-            rating: 5,
-        },
+        seller: { name: "Thomas H.", rating: 5 },
+        category: "Elektronik",
     },
     {
         id: "3",
@@ -111,25 +121,80 @@ const dummyProducts = [
         },
     },
 ];
-
 const Home = () => {
-    const handleFilterChange = (filters: any) => {
-        console.log("Filter geändert:", filters);
-        // Hier später die Filterlogik implementieren
+    const [filters, setFilters] = useState<{
+        category: string;
+        condition: string;
+        priceRange: [number, number];
+        isFree: boolean;
+    }>({
+        category: "Alle Kategorien",
+        condition: "Alle Zustände",
+        priceRange: [0, 500],
+        isFree: false,
+    });
+
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const [filteredProducts, setFilteredProducts] = useState<Product[]>(dummyProducts);
+
+    const applySearchAndFilter = () => {
+        let filtered = dummyProducts;
+
+        // Suche
+        if (searchTerm.trim() !== "") {
+            filtered = filtered.filter((p) =>
+                p.title.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // Filter Kategorie
+        if (filters.category !== "Alle Kategorien") {
+            filtered = filtered.filter((p) => p.category === filters.category);
+        }
+
+        // Filter Zustand
+        if (filters.condition !== "Alle Zustände") {
+            filtered = filtered.filter((p) => p.condition === filters.condition);
+        }
+
+        // Filter kostenlos
+        if (filters.isFree) {
+            filtered = filtered.filter((p) => p.isFree);
+        }
+
+        // Preisfilter (preispflichtige Artikel zwischen Preisrange)
+        filtered = filtered.filter((p) => {
+            if (p.price === "Zu verschenken") {
+                return filters.isFree;
+            }
+            return (
+                typeof p.price === "number" &&
+                p.price >= filters.priceRange[0] &&
+                p.price <= filters.priceRange[1]
+            );
+        });
+
+        setFilteredProducts(filtered);
+    };
+
+    // Filter + Suche neu anwenden, wenn sich Filter ändern
+    useEffect(() => {
+        applySearchAndFilter();
+    }, [filters]);
+
+    const handleFilterChange = (newFilters: typeof filters) => {
+        setFilters(newFilters);
     };
 
     return (
-        <div className="flex flex-col min-h-screen">
+        <div className="flex flex-col min-h-screen" id="home-section">
             <Navbar />
-
             <main className="flex-grow">
-                {/* Hero-Bereich */}
                 <div className="bg-marktx-blue-600 text-white py-12">
                     <div className="marktx-container">
                         <div className="max-w-3xl mx-auto text-center">
-                            <h1 className="text-3xl md:text-4xl font-bold mb-4">
-                                Willkommen bei MarktX!
-                            </h1>
+                            <h1 className="text-3xl md:text-4xl font-bold mb-4">Willkommen bei MarktX!</h1>
                             <p className="text-xl mb-6">
                                 Der Handelsplatz für Schülerinnen und Schüler der HTL Leonding.
                             </p>
@@ -138,22 +203,51 @@ const Home = () => {
                                     Angebote stöbern
                                 </Button>
                                 <Button className="btn-accent">
-                                    Anzeige erstellen
+                                    <Link to="/create">Anzeige erstellen</Link>
                                 </Button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Kategorie-Navigation */}
+                {/* Suchfeld oben */}
+                <div className="marktx-container my-6">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                applySearchAndFilter();
+                            }
+                        }}
+                        placeholder="Suche nach Artikeln..."
+                        className="w-full p-3 border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-marktx-blue-600"
+                    />
+                </div>
+
                 <div className="bg-marktx-gray-100 py-6">
                     <div className="marktx-container">
                         <div className="flex overflow-x-auto pb-2 space-x-4 scrollbar-none">
-                            {["Alle Kategorien", "Schulbücher", "Elektronik", "Kleidung", "Möbel", "Schreibwaren", "Sonstiges"].map((category) => (
+                            {[
+                                "Alle Kategorien",
+                                "Schulbücher",
+                                "Elektronik",
+                                "Kleidung",
+                                "Möbel",
+                                "Schreibwaren",
+                                "Sonstiges",
+                            ].map((category) => (
                                 <Button
                                     key={category}
-                                    variant="outline"
+                                    variant={filters.category === category ? "default" : "outline"}
                                     className="whitespace-nowrap"
+                                    onClick={() =>
+                                        setFilters((f) => ({
+                                            ...f,
+                                            category: category === "Alle Kategorien" ? "Alle Kategorien" : category,
+                                        }))
+                                    }
                                 >
                                     {category}
                                 </Button>
@@ -162,23 +256,20 @@ const Home = () => {
                     </div>
                 </div>
 
-                {/* Hauptinhalt */}
                 <div className="marktx-container py-8">
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        {/* Linke Spalte: Filter */}
-                        <div className="lg:col-span-1">
-                            <ProductFilter onFilterChange={handleFilterChange} />
-
-                            {/* Zu verschenken-Bereich */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <ProductFilter filters={filters} onFilterChange={handleFilterChange} />
                             <div className="bg-marktx-blue-50 border-2 border-marktx-blue-200 rounded-lg p-4 text-center">
                                 <Tag size={24} className="mx-auto mb-2 text-marktx-blue-600" />
                                 <h3 className="font-bold text-marktx-blue-700 mb-2">Artikel zu verschenken?</h3>
                                 <p className="text-sm mb-3">Hast du Schulbücher oder andere Artikel, die du verschenken möchtest?</p>
-                                <Button className="w-full btn-primary">Gratisanzeige erstellen</Button>
+                                <Button className="w-full btn-primary">
+                                    <Link to="/create">Gratisanzeige erstellen</Link>
+                                </Button>
                             </div>
                         </div>
 
-                        {/* Rechte Spalte: Produktliste */}
                         <div className="lg:col-span-3">
                             <Tabs defaultValue="newest">
                                 <div className="flex justify-between items-center mb-4">
@@ -192,76 +283,35 @@ const Home = () => {
 
                                 <TabsContent value="newest" className="mt-0">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {dummyProducts.map((product) => (
-                                            <ProductCard
-                                                key={product.id}
-                                                id={product.id}
-                                                title={product.title}
-                                                price={product.price}
-                                                imageUrl={product.imageUrl}
-                                                condition={product.condition}
-                                                createdAt={product.createdAt}
-                                                seller={product.seller}
-                                                isFree={product.isFree}
-                                            />
+                                        {filteredProducts.map((product) => (
+                                            <ProductCard key={product.id} {...product} />
                                         ))}
                                     </div>
                                 </TabsContent>
 
                                 <TabsContent value="popular" className="mt-0">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {/* Hier würden beliebte Produkte angezeigt werden */}
-                                        {dummyProducts
+                                        {filteredProducts
                                             .slice()
                                             .sort((a, b) => b.seller.rating - a.seller.rating)
                                             .map((product) => (
-                                                <ProductCard
-                                                    key={product.id}
-                                                    id={product.id}
-                                                    title={product.title}
-                                                    price={product.price}
-                                                    imageUrl={product.imageUrl}
-                                                    condition={product.condition}
-                                                    createdAt={product.createdAt}
-                                                    seller={product.seller}
-                                                    isFree={product.isFree}
-                                                />
+                                                <ProductCard key={product.id} {...product} />
                                             ))}
                                     </div>
                                 </TabsContent>
 
                                 <TabsContent value="free" className="mt-0">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {dummyProducts
-                                            .filter((product) => product.isFree)
-                                            .map((product) => (
-                                                <ProductCard
-                                                    key={product.id}
-                                                    id={product.id}
-                                                    title={product.title}
-                                                    price={product.price}
-                                                    imageUrl={product.imageUrl}
-                                                    condition={product.condition}
-                                                    createdAt={product.createdAt}
-                                                    seller={product.seller}
-                                                    isFree={product.isFree}
-                                                />
-                                            ))}
+                                        {filteredProducts.filter((p) => p.isFree).map((product) => (
+                                            <ProductCard key={product.id} {...product} />
+                                        ))}
                                     </div>
                                 </TabsContent>
                             </Tabs>
-
-                            <div className="mt-8 flex justify-center">
-                                <Button variant="outline" className="flex items-center space-x-2">
-                                    <span>Mehr anzeigen</span>
-                                    <ArrowRight size={16} />
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 </div>
             </main>
-
             <Footer />
         </div>
     );

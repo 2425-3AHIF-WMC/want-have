@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Select,
     SelectContent,
@@ -15,6 +15,12 @@ import { Filter } from "lucide-react";
 type PriceRange = [number, number];
 
 interface ProductFilterProps {
+    filters: {
+        category: string;
+        condition: string;
+        priceRange: PriceRange;
+        isFree: boolean;
+    };
     onFilterChange: (filters: {
         category: string;
         condition: string;
@@ -30,7 +36,7 @@ const categories = [
     "Kleidung",
     "Möbel",
     "Schreibwaren",
-    "Sonstiges"
+    "Sonstiges",
 ];
 
 const conditions = [
@@ -39,31 +45,37 @@ const conditions = [
     "Wie neu",
     "Gut",
     "Akzeptabel",
-    "Gebraucht"
 ];
 
-const ProductFilter = ({ onFilterChange }: ProductFilterProps) => {
-    const [selectedCategory, setSelectedCategory] = useState<string>("Alle Kategorien");
-    const [selectedCondition, setSelectedCondition] = useState<string>("Alle Zustände");
-    const [priceRange, setPriceRange] = useState<PriceRange>([0, 500]);
-    const [showOnlyFree, setShowOnlyFree] = useState<boolean>(false);
-    const [isExpanded, setIsExpanded] = useState<boolean>(false);
+const ProductFilter = ({ filters, onFilterChange }: ProductFilterProps) => {
+    // Lokaler State, der vom Elternteil synchronisiert wird
+    const [category, setCategory] = useState(filters.category);
+    const [condition, setCondition] = useState(filters.condition);
+    const [priceRange, setPriceRange] = useState(filters.priceRange);
+    const [isFree, setIsFree] = useState(filters.isFree);
 
-    const handleApplyFilters = () => {
+    // Synchronisiere lokale State mit props, falls sich diese ändern
+    useEffect(() => {
+        setCategory(filters.category);
+        setCondition(filters.condition);
+        setPriceRange(filters.priceRange);
+        setIsFree(filters.isFree);
+    }, [filters]);
+
+    const applyFilters = () => {
         onFilterChange({
-            category: selectedCategory,
-            condition: selectedCondition,
+            category,
+            condition,
             priceRange,
-            isFree: showOnlyFree,
+            isFree,
         });
     };
 
-    const handleResetFilters = () => {
-        setSelectedCategory("Alle Kategorien");
-        setSelectedCondition("Alle Zustände");
+    const resetFilters = () => {
+        setCategory("Alle Kategorien");
+        setCondition("Alle Zustände");
         setPriceRange([0, 500]);
-        setShowOnlyFree(false);
-
+        setIsFree(false);
         onFilterChange({
             category: "Alle Kategorien",
             condition: "Alle Zustände",
@@ -73,111 +85,93 @@ const ProductFilter = ({ onFilterChange }: ProductFilterProps) => {
     };
 
     return (
-        <div className="bg-white shadow rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                    <Filter size={18} className="mr-2 text-marktx-blue-600" />
-                    <h3 className="font-medium">Filter</h3>
-                </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsExpanded(!isExpanded)}
+        <div className="space-y-6 p-4 bg-white rounded-md border border-gray-200 shadow-sm">
+            <div>
+                <Label htmlFor="category-select" className="mb-1 block font-semibold">
+                    Kategorie
+                </Label>
+                <Select
+                    value={category}
+                    onValueChange={(value) => setCategory(value)}
+                    //id="category-select"
                 >
-                    {isExpanded ? "Weniger anzeigen" : "Mehr anzeigen"}
-                </Button>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Kategorie wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            {categories.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                    {cat}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
             </div>
 
-            <div className="space-y-4">
-                <div>
-                    <Label htmlFor="category" className="text-sm">Kategorie</Label>
-                    <Select
-                        value={selectedCategory}
-                        onValueChange={setSelectedCategory}
-                    >
-                        <SelectTrigger id="category" className="w-full">
-                            <SelectValue placeholder="Wähle eine Kategorie" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                {categories.map((category) => (
-                                    <SelectItem key={category} value={category}>
-                                        {category}
-                                    </SelectItem>
-                                ))}
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
+            <div>
+                <Label htmlFor="condition-select" className="mb-1 block font-semibold">
+                    Zustand
+                </Label>
+                <Select
+                    value={condition}
+                    onValueChange={(value) => setCondition(value)}
+                    //id="condition-select"
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Zustand wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            {conditions.map((cond) => (
+                                <SelectItem key={cond} value={cond}>
+                                    {cond}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div>
+                <Label htmlFor="price-range" className="mb-1 block font-semibold">
+                    Preis (0€ - 500€)
+                </Label>
+                <Slider
+                    id="price-range"
+                    value={priceRange}
+                    onValueChange={(value) => setPriceRange(value as PriceRange)}
+                    max={500}
+                    step={1}
+                    //range
+                />
+                <div className="flex justify-between text-sm mt-1">
+                    <span>{priceRange[0]} €</span>
+                    <span>{priceRange[1]} €</span>
                 </div>
+            </div>
 
-                {isExpanded && (
-                    <>
-                        <div>
-                            <Label htmlFor="condition" className="text-sm">Zustand</Label>
-                            <Select
-                                value={selectedCondition}
-                                onValueChange={setSelectedCondition}
-                            >
-                                <SelectTrigger id="condition" className="w-full">
-                                    <SelectValue placeholder="Wähle einen Zustand" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        {conditions.map((condition) => (
-                                            <SelectItem key={condition} value={condition}>
-                                                {condition}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
+            <div className="flex items-center space-x-2">
+                <input
+                    type="checkbox"
+                    id="free-checkbox"
+                    checked={isFree}
+                    onChange={() => setIsFree(!isFree)}
+                />
+                <Label htmlFor="free-checkbox" className="select-none">
+                    Nur Artikel zu verschenken anzeigen
+                </Label>
+            </div>
 
-                        <div>
-                            <div className="flex justify-between mb-2">
-                                <Label className="text-sm">Preis</Label>
-                                <span className="text-sm text-marktx-gray-500">
-                  {priceRange[0]}€ - {priceRange[1]}€
-                </span>
-                            </div>
-                            <Slider
-                                defaultValue={priceRange}
-                                min={0}
-                                max={500}
-                                step={5}
-                                onValueChange={(values: PriceRange) => setPriceRange(values as PriceRange)}
-                                className="py-4"
-                            />
-                        </div>
-
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                id="free"
-                                checked={showOnlyFree}
-                                onChange={(e) => setShowOnlyFree(e.target.checked)}
-                                className="mr-2 h-4 w-4 text-marktx-blue-600"
-                            />
-                            <Label htmlFor="free" className="text-sm">Nur Artikel zum Verschenken</Label>
-                        </div>
-                    </>
-                )}
-
-                <div className="flex space-x-3 pt-2">
-                    <Button
-                        onClick={handleApplyFilters}
-                        className="btn-primary flex-1"
-                    >
-                        Anwenden
-                    </Button>
-                    <Button
-                        onClick={handleResetFilters}
-                        variant="outline"
-                        className="flex-1"
-                    >
-                        Zurücksetzen
-                    </Button>
-                </div>
+            <div className="flex justify-between">
+                <Button variant="outline" onClick={resetFilters}>
+                    Zurücksetzen
+                </Button>
+                <Button onClick={applyFilters} className="flex items-center space-x-2">
+                    <Filter size={16} />
+                    <span>Filter anwenden</span>
+                </Button>
             </div>
         </div>
     );
