@@ -7,7 +7,7 @@ export const adRouter = Router();
 // Get all ads
 adRouter.get('/', async (_req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM ads ORDER BY created_at DESC');
+        const result = await pool.query('SELECT * FROM ad ORDER BY created_at DESC');
         res.json(result.rows);
     } catch (err) {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch ads' });
@@ -26,7 +26,7 @@ adRouter.post('/', async (req, res) => {
 
     // Check if the user exists
     try {
-        const userCheck = await pool.query('SELECT * FROM users WHERE id = $1', [owner_id]);
+        const userCheck = await pool.query('SELECT * FROM "user" WHERE id = $1', [owner_id]);
         if (userCheck.rows.length === 0) {
             res.status(StatusCodes.NOT_FOUND).json({ error: 'User not found' });
             return
@@ -34,7 +34,7 @@ adRouter.post('/', async (req, res) => {
 
         // Insert the new ad
         const result = await pool.query(
-            'INSERT INTO ads (title, description, price, owner_id) VALUES ($1, $2, $3, $4) RETURNING *',
+            'INSERT INTO ad (title, description, price, owner_id) VALUES ($1, $2, $3, $4) RETURNING *',
             [title, description, price, owner_id]
         );
         res.status(StatusCodes.CREATED).json(result.rows[0]);

@@ -10,7 +10,7 @@ chatRouter.get('/:userId', async (req, res) => {
 
     // Check if the user exists
     try {
-        const userCheck = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        const userCheck = await pool.query('SELECT * FROM "user" WHERE id = $1', [userId]);
         if (userCheck.rows.length === 0) {
             res.status(StatusCodes.NOT_FOUND).json({ error: 'User not found' });
             return;
@@ -18,7 +18,7 @@ chatRouter.get('/:userId', async (req, res) => {
 
         // Fetch chats for the user
         const result = await pool.query(
-            `SELECT * FROM chats WHERE user1_id = $1 OR user2_id = $1`,
+            `SELECT * FROM chat WHERE user1_id = $1 OR user2_id = $1`,
             [userId]
         );
         res.status(StatusCodes.OK).json(result.rows);
@@ -38,7 +38,7 @@ chatRouter.post('/start', async (req, res) => {
     try {
         // Check if chat already exists
         const existingChat = await pool.query(
-            `SELECT * FROM chats WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)`,
+            `SELECT * FROM chat WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)`,
             [user1_id, user2_id]
         );
 
@@ -49,7 +49,7 @@ chatRouter.post('/start', async (req, res) => {
 
         // Create new chat
         const newChat = await pool.query(
-            `INSERT INTO chats (user1_id, user2_id) VALUES ($1, $2) RETURNING *`,
+            `INSERT INTO chat (user1_id, user2_id) VALUES ($1, $2) RETURNING *`,
             [user1_id, user2_id]
         );
 
