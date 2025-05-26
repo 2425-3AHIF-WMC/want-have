@@ -12,25 +12,68 @@ const categories = [
 ];
 
 const Report = () => {
+    const [username, setUsername] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
     const [description, setDescription] = useState("");
     const [submitted, setSubmitted] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Hier kannst du z.B. einen API-Call machen, um die Meldung zu speichern
-        setSubmitted(true);
+
+        const reportData = {
+            username,
+            category: selectedCategory,
+            description,
+        };
+
+        try {
+            const response = await fetch("/api/report", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(reportData),
+            });
+
+            if (response.ok) {
+                setSubmitted(true);
+            } else {
+                alert("Fehler beim Absenden der Meldung");
+            }
+        } catch (error) {
+            console.error("Fehler beim Senden:", error);
+            alert("Verbindung zum Server fehlgeschlagen");
+        }
     };
+
 
     return (
         <>
             <Navbar />
             <main className="marktx-container py-8 min-h-[60vh]">
-                <h1 className="text-2xl font-bold mb-6">Missbrauch melden</h1>
+                <h1 className="text-2xl font-bold mb-6">🚨 Missbrauch melden</h1>
+
                 {!submitted ? (
                     <form onSubmit={handleSubmit} className="max-w-lg">
-                        <label className="block mb-2 font-semibold" htmlFor="category">
-                            Kategorie wählen
+                        <p className="text-gray-600 mb-4">
+                            Bitte fülle das folgende Formular aus, wenn du einen Missbrauch oder Regelverstoß melden möchtest. Deine Meldung bleibt anonym und wird vertraulich behandelt.
+                        </p>
+
+                        <label htmlFor="username" className="block font-semibold mb-1">
+                            Gemeldeter Benutzername
+                        </label>
+                        <input
+                            id="username"
+                            type="text"
+                            className="w-full mb-4 p-2 border border-gray-300 rounded"
+                            placeholder="z. B. max.mustermann@htl-leonding.at"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+
+                        <label htmlFor="category" className="block font-semibold mb-1">
+                            Kategorie des Vorfalls
                         </label>
                         <select
                             id="category"
@@ -40,7 +83,7 @@ const Report = () => {
                             required
                         >
                             <option value="" disabled>
-                                -- Bitte wählen --
+                                -- Bitte auswählen --
                             </option>
                             {categories.map((cat) => (
                                 <option key={cat} value={cat}>
@@ -49,13 +92,14 @@ const Report = () => {
                             ))}
                         </select>
 
-                        <label className="block mb-2 font-semibold" htmlFor="description">
-                            Beschreibung
+                        <label htmlFor="description" className="block font-semibold mb-1">
+                            Beschreibung des Vorfalls
                         </label>
                         <textarea
                             id="description"
                             className="w-full mb-4 p-2 border border-gray-300 rounded"
                             rows={5}
+                            placeholder="Beschreibe hier möglichst genau, was vorgefallen ist..."
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             required
@@ -65,11 +109,16 @@ const Report = () => {
                             type="submit"
                             className="bg-marktx-blue-600 text-white px-4 py-2 rounded hover:bg-marktx-blue-700"
                         >
-                            Melden
+                            Meldung absenden
                         </button>
                     </form>
                 ) : (
-                    <p className="text-green-600 font-semibold">Vielen Dank für Ihre Meldung! Wir werden uns darum kümmern.</p>
+                    <div className="text-green-600 font-semibold">
+                        <p className="mb-2">✅ Vielen Dank für deine Meldung!</p>
+                        <p>
+                            Unser Team wird den Vorfall prüfen und bei Bedarf entsprechende Maßnahmen ergreifen.
+                        </p>
+                    </div>
                 )}
             </main>
             <Footer />

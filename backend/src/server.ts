@@ -7,6 +7,8 @@ import http from "http";
 import { Server } from "socket.io";
 import { createClient } from "@supabase/supabase-js";
 import pool from "./db/pool";
+import { reportRouter } from "./routes/reportRouter";
+
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -25,6 +27,8 @@ app.use('/users', userRouter);
 app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
 app.use('/messages', messageRouter);
+app.use('/reports', reportRouter);
+
 
 if (process.env.ANON_KEY) {
     supabase = createClient("https://otrclrdtfqsjhuuxkhzk.supabase.co", process.env.ANON_KEY);

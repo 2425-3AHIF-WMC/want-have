@@ -199,12 +199,14 @@ const Home = () => {
                                 Der Handelsplatz für Schülerinnen und Schüler der HTL Leonding.
                             </p>
                             <div className="flex justify-center space-x-4">
-                                <Button className="bg-white text-marktx-blue-600 hover:bg-marktx-blue-50">
-                                    Angebote stöbern
-                                </Button>
-                                <Button className="btn-accent">
-                                    <Link to="/create">Anzeige erstellen</Link>
-                                </Button>
+                                <a href="#waren">
+                                    <Button className="bg-white text-marktx-blue-600 hover:bg-marktx-blue-50">
+                                        Angebote stöbern
+                                    </Button>
+                                </a>
+                                    <Button className="btn-accent">
+                                        <Link to="/create">Anzeige erstellen</Link>
+                                    </Button>
                             </div>
                         </div>
                     </div>
@@ -226,7 +228,7 @@ const Home = () => {
                     />
                 </div>
 
-                <div className="bg-marktx-gray-100 py-6">
+                <div className="bg-marktx-gray-100 py-6" id="waren">
                     <div className="marktx-container">
                         <div className="flex overflow-x-auto pb-2 space-x-4 scrollbar-none">
                             {[
@@ -256,7 +258,7 @@ const Home = () => {
                     </div>
                 </div>
 
-                <div className="marktx-container py-8">
+                <div className="marktx-container py-8" >
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                         <div className="lg:col-span-1 space-y-6">
                             <ProductFilter filters={filters} onFilterChange={handleFilterChange} />
@@ -273,7 +275,7 @@ const Home = () => {
                         <div className="lg:col-span-3">
                             <Tabs defaultValue="newest">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h2 className="text-xl font-bold">Entdecke Angebote</h2>
+                                    <h2 className="text-xl font-bold" >Entdecke Angebote</h2>
                                     <TabsList>
                                         <TabsTrigger value="newest">Neueste</TabsTrigger>
                                         <TabsTrigger value="popular">Beliebteste</TabsTrigger>
