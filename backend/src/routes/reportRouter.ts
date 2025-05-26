@@ -1,6 +1,6 @@
 import { Router } from "express";
-
 import pool from '../db/pool';
+import {StatusCodes} from "http-status-codes";
 
 export const reportRouter = Router();
 
@@ -8,7 +8,7 @@ reportRouter.post('/', async (req, res) => {
     const { username, category, description } = req.body;
 
     if (!category || !description) {
-        res.status(400).json({ error: "Kategorie und Beschreibung sind erforderlich." });
+        res.status(StatusCodes.BAD_REQUEST).json({ error: "category and description is required" });
     }
 
     try {
@@ -16,9 +16,8 @@ reportRouter.post('/', async (req, res) => {
             "INSERT INTO reports (username, category, description, created_at) VALUES ($1, $2, $3, NOW())",
             [username || null, category, description]
         );
-        res.status(201).json({ message: "Meldung gespeichert" });
+        res.status(StatusCodes.CREATED).json({ message: "report saved" });
     } catch (err) {
-        console.error("Fehler beim Speichern der Meldung:", err);
-        res.status(500).json({ error: "Interner Serverfehler" });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Internal Server Error" });
     }
 });

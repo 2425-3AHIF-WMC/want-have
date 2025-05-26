@@ -13,10 +13,7 @@
       "*": ["node_modules/*"]              // Resolves modules from node_modules
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "src/types/**/*.d.ts"
-  ],
+  "include": ["src/**/*"],
   "exclude": [
     "node_modules",                        // Exclude 'node_modules' from the compilation process
     "dist"                                 // Exclude the 'dist' folder from the compilation process
