@@ -4,7 +4,6 @@ import {
     MessageSquare,
     Menu,
     X,
-    Search,
     User,
     Plus
 } from "lucide-react";
@@ -55,26 +54,6 @@ const Navbar = forwardRef((props, ref) => {
                         </span>
                     </Link>
 
-                    {/* Suchleiste (desktop) */}
-                    <div className="hidden md:flex flex-1 max-w-lg mx-6">
-                        <form onSubmit={handleSearch} className="w-full relative">
-                            <Input
-                                type="text"
-                                placeholder="Suche nach Artikeln..."
-                                className="w-full pr-10"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                ref={searchInputRef}
-                            />
-                            <button
-                                type="submit"
-                                className="absolute right-3 top-1/2 -translate-y-1/2"
-                                aria-label="Suche absenden"
-                            >
-                                <Search size={18} className="text-marktx-gray-400" />
-                            </button>
-                        </form>
-                    </div>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-4">
@@ -107,27 +86,6 @@ const Navbar = forwardRef((props, ref) => {
                             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </Button>
                     </div>
-                </div>
-
-                {/* Suchleiste (mobile) */}
-                <div className="md:hidden pb-3">
-                    <form onSubmit={handleSearch} className="relative">
-                        <Input
-                            type="text"
-                            placeholder="Suche nach Artikeln..."
-                            className="w-full pr-10"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            ref={searchInputRef}
-                        />
-                        <button
-                            type="submit"
-                            className="absolute right-3 top-1/2 -translate-y-1/2"
-                            aria-label="Suche absenden"
-                        >
-                            <Search size={18} className="text-marktx-gray-400" />
-                        </button>
-                    </form>
                 </div>
 
                 {/* Mobile Menu */}
