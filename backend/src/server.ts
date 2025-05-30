@@ -13,6 +13,7 @@ import {keycloak, sessionMiddleware} from "./middleware/keycloak";
 import {loginRouter} from "./routes/loginRouter";
 import {purchaseRequestRouter} from "./routes/purchaseRequestRouter";
 import dotenv from 'dotenv';
+import {recommendationRouter} from "./routes/recommendationRouter";
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -44,6 +45,7 @@ app.use('/messages', messageRouter);
 app.use('/reports', reportRouter);
 app.use('/auth', loginRouter);
 app.use('/requests', purchaseRequestRouter);
+app.use('/recommendations', recommendationRouter);
 
 if (process.env.SUPABASE_KEY && process.env.SUPABASE_URL) {
     supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);

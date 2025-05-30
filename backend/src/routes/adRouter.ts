@@ -10,7 +10,7 @@ export const adRouter = Router();
 adRouter.get('/', authenticateJWT, async (_req: Request, res: Response) => {
     try {
         const result = await pool.query('SELECT * FROM ad ORDER BY created_at DESC');
-        res.json(result.rows);
+        res.status(StatusCodes.OK).json(result.rows);
     } catch (err) {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch ads' });
     }
@@ -41,6 +41,7 @@ adRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
             'INSERT INTO ad (title, description, price, owner_id, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [title, description, adPrice, owner_id, image_url || null] // image_url can be null
         );
+
         res.status(StatusCodes.CREATED).json(result.rows[0]);
     } catch (err) {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to create ad' });
@@ -49,6 +50,7 @@ adRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
 
 adRouter.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
     const { id } = req.params;
+    const userId = req.user!.id;
 
     try {
         const result = await pool.query(
@@ -61,7 +63,11 @@ adRouter.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
             return;
         }
 
-        res.json(result.rows[0]);
+        await pool.query(`
+      INSERT INTO ad_view (user_id, ad_id) VALUES ($1, $2)
+    `, [userId, id]);
+
+        res.status(StatusCodes.OK).json(result.rows[0]);
     } catch (err) {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch ad', details: err });
     }
