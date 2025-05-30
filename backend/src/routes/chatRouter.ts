@@ -64,4 +64,50 @@ chatRouter.post('/start', async (req: Request, res: Response) => {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: err });
     }
 });
+chatRouter.get('/:chatId/partner', async (req: Request, res: Response) => {
+    try {
+        const chatId = req.params.chatId;
+        const userId = req.query.userId as string;
+
+        // Hole den Chat aus der DB
+        const chatResult = await pool.query(
+            `SELECT user1_id, user2_id FROM chat WHERE id = $1`,
+            [chatId]
+        );
+
+        if (chatResult.rows.length === 0) {
+            res.status(StatusCodes.NOT_FOUND).json({ error: 'Chat nicht gefunden' });
+            return;
+        }
+
+        const chat = chatResult.rows[0];
+
+        // Ermittle den Partner: Wenn userId user1 ist, dann partner = user2, sonst user1
+        let partnerId = null;
+        if (chat.user1_id === userId) {
+            partnerId = chat.user2_id;
+        } else if (chat.user2_id === userId) {
+            partnerId = chat.user1_id;
+        } else {
+            res.status(StatusCodes.BAD_REQUEST).json({ error: 'User nicht im Chat' });
+            return;
+        }
+
+        // Hole die Partnerdaten (z.B. Username)
+        const partnerResult = await pool.query(
+            `SELECT id, username FROM "user" WHERE id = $1`,
+            [partnerId]
+        );
+
+        if (partnerResult.rows.length === 0) {
+            res.status(StatusCodes.NOT_FOUND).json({ error: 'Partner nicht gefunden' });
+            return;
+        }
+
+        res.status(StatusCodes.OK).json(partnerResult.rows[0]);
+    } catch (error) {
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Serverfehler' });
+    }
+});
+
 
