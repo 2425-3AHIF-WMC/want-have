@@ -5,25 +5,32 @@ import {StatusCodes} from "http-status-codes";
 export const chatRouter = Router();
 
 // Get all chats for a user
-chatRouter.get('/:userId', async (req, res) => {
-    const { userId } = req.params;
-
-    // Check if the user exists
+// Neue Route für Chat-Liste
+chatRouter.get('/user/:userId', async (req, res) => {
     try {
-        const userCheck = await pool.query('SELECT * FROM "user" WHERE id = $1', [userId]);
-        if (userCheck.rows.length === 0) {
-            res.status(StatusCodes.NOT_FOUND).json({ error: 'User not found' });
-            return;
-        }
+        const { userId } = req.params;
 
-        // Fetch chats for the user
-        const result = await pool.query(
-            `SELECT * FROM chat WHERE user1_id = $1 OR user2_id = $1`,
-            [userId]
-        );
-        res.status(StatusCodes.OK).json(result.rows);
+        const result = await pool.query(`
+            SELECT
+                c.id,
+                CASE
+                    WHEN c.user1_id = $1 THEN u2.username
+                    ELSE u1.username
+                    END as partner_name,
+                CASE
+                    WHEN c.user1_id = $1 THEN c.user2_id
+                    ELSE c.user1_id
+                    END as partner_id,
+                (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
+            FROM chat c
+                JOIN "user" u1 ON c.user1_id = u1.id
+                JOIN "user" u2 ON c.user2_id = u2.id
+            WHERE c.user1_id = $1 OR c.user2_id = $1
+        `, [userId]);
+
+        res.json(result.rows);
     } catch (err) {
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch chats' });
+        res.status(500).json({ error: 'Database error' });
     }
 });
 
