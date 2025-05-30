@@ -3,8 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
 import ChatComponent from "./components/ChatComponent";
-import { AuthProvider } from '@/context/AuthContext';
-
+import { AuthProvider } from './context/AuthContext';
 
 import Home from "./pages/Home";
 import FAQ from "./pages/FAQ";
@@ -14,6 +13,11 @@ import Report from "./pages/Report";
 
 import CreateListing from "./components/CreateListing";
 import NotFound from "./components/NotFound";
+import ChatPage from './components/ChatPage';
+import PartnerComponent from "./components/PartnerComponent";
+import { Navigate } from "react-router-dom";
+
+
 import { Toaster } from "sonner";
 
 
@@ -27,7 +31,7 @@ const App = () => (
         <AuthProvider>
         <TooltipProvider>
             <Toaster />
-            <BrowserRouter basename="/want-have">
+            <BrowserRouter basename="/">
                 <ScrollToTop />
                 <Routes>
                     <Route path="/" element={<Home />} />
@@ -36,8 +40,10 @@ const App = () => (
                     <Route path="/rules" element={<Rules />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/report" element={<Report />} />
-                    <Route path="*" element={<NotFound />} />
                     <Route path="/messages" element={<MessagesList />} />
+                    <Route path="/chats/:chatId/partner" element={<PartnerComponent />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+
                     <Route path="/chat/:chatId" element={<ChatComponent
                         chatId={""} // Hier solltest du die chatId aus den URL-Parametern holen
                         userId={"currentUserId"} // Aktuelle Benutzer-ID aus deinem Auth-System

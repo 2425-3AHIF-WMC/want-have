@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import {
     Bell,
     MessageSquare,
@@ -10,15 +10,16 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Navbar = forwardRef((props, ref) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [chatId, setChatId] = useState<string | null>(null); // 💬 Chat-ID hier
     const navigate = useNavigate();
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Methode, die von außen aufgerufen werden kann, um Fokus zu setzen
     useImperativeHandle(ref, () => ({
         focusSearchInput() {
             searchInputRef.current?.focus();
@@ -30,18 +31,25 @@ const Navbar = forwardRef((props, ref) => {
     };
 
     const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();  // Verhindert, dass die Seite neu lädt
-        console.log("Suche gestartet mit:", searchQuery);  // Zeigt den Suchbegriff in der Konsole an
-
-        if (!searchQuery.trim()) {
-            console.log("Suchbegriff ist leer, Suche wird abgebrochen.");
-            return;  // Suche nicht starten, wenn leer
-        }
-
-        navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);  // Navigation zur Suchseite
+        e.preventDefault();
+        if (!searchQuery.trim()) return;
+        navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
     };
 
+    // Simuliere aktuellen Benutzer-Chat (z. B. aus Session oder API)
+    useEffect(() => {
+        const fetchChatId = async () => {
+            try {
+                // ⛔ Ersetze das später mit echter Logik oder API
+                const simulatedChatId = "abc123"; // Beispiel-ID
+                setChatId(simulatedChatId);
+            } catch (err) {
+                console.error("Fehler beim Laden der Chat-ID", err);
+            }
+        };
 
+        fetchChatId();
+    }, []);
 
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -54,7 +62,6 @@ const Navbar = forwardRef((props, ref) => {
                         </span>
                     </Link>
 
-
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-4">
                         <Button variant="ghost" size="icon" asChild>
@@ -63,7 +70,13 @@ const Navbar = forwardRef((props, ref) => {
                             </Link>
                         </Button>
                         <Button variant="ghost" size="icon" asChild>
-                            <Link to="/messages" aria-label="Nachrichten">
+                            <Link
+                                to={chatId ? `/messages/${chatId}` : "#"}
+                                aria-label="Nachrichten"
+                                onClick={(e) => {
+                                    if (!chatId) e.preventDefault();
+                                }}
+                            >
                                 <MessageSquare size={20} />
                             </Link>
                         </Button>
@@ -100,7 +113,7 @@ const Navbar = forwardRef((props, ref) => {
                                 <Bell size={20} className="mr-2" />
                                 Benachrichtigungen
                             </Link>
-                            <Link to="/messages" className="flex items-center px-4 py-2">
+                            <Link to={chatId ? `/messages/${chatId}` : "#"} className="flex items-center px-4 py-2">
                                 <MessageSquare size={20} className="mr-2" />
                                 Nachrichten
                             </Link>
