@@ -1,12 +1,11 @@
 import Router from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
+import { Request, Response } from 'express';
 
 export const chatRouter = Router();
 
-// Get all chats for a user
-// Neue Route für Chat-Liste
-chatRouter.get('/user/:userId', async (req, res) => {
+chatRouter.get('/:userId', async (req: Request, res: Response) => {
     try {
         const { userId } = req.params;
 
@@ -28,14 +27,14 @@ chatRouter.get('/user/:userId', async (req, res) => {
             WHERE c.user1_id = $1 OR c.user2_id = $1
         `, [userId]);
 
-        res.json(result.rows);
+        res.status(StatusCodes.OK).json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: 'Database error' });
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error' });
     }
 });
 
 // Create new chat
-chatRouter.post('/start', async (req, res) => {
+chatRouter.post('/start', async (req: Request, res: Response) => {
     const { user1_id, user2_id } = req.body;
     if (!user1_id || !user2_id) {
         res.status(StatusCodes.BAD_REQUEST).json({ error: 'Missing user IDs' });

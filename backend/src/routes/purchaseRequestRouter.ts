@@ -2,13 +2,15 @@ import { Router } from 'express';
 import pool from '../db/pool';
 import { authenticateJWT } from '../middleware/auth';
 import {StatusCodes} from "http-status-codes";
+import { Request, Response } from 'express';
+
 
 export const purchaseRequestRouter = Router();
 
 // Buyer sends request to buy an ad
-purchaseRequestRouter.post('/', authenticateJWT, async (req, res) => {
+purchaseRequestRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
     const { ad_id } = req.body;
-    const buyer_id = req.user.id;
+    const buyer_id = req.user!.id;
 
     if (!ad_id) {
         res.status(StatusCodes.BAD_REQUEST).json({error: 'ad_id is required'});
@@ -53,8 +55,8 @@ purchaseRequestRouter.post('/', authenticateJWT, async (req, res) => {
 });
 
 // Seller fetches all purchase requests for their ads
-purchaseRequestRouter.get('/', authenticateJWT, async (req, res) => {
-    const seller_id = req.user.id;
+purchaseRequestRouter.get('/', authenticateJWT, async (req: Request, res: Response) => {
+    const seller_id = req.user!.id;
     try {
         const requests = await pool.query(
             'SELECT pr.*, u.username as buyer_username, a.title as ad_title FROM purchase_requests pr ' +
@@ -71,8 +73,8 @@ purchaseRequestRouter.get('/', authenticateJWT, async (req, res) => {
 });
 
 // Seller updates request status (accept/reject)
-purchaseRequestRouter.patch('/:id', authenticateJWT, async (req, res) => {
-    const seller_id = req.user.id;
+purchaseRequestRouter.patch('/:id', authenticateJWT, async (req: Request, res: Response) => {
+    const seller_id = req.user!.id;
     const request_id = req.params.id;
     const { status } = req.body;
 

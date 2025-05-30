@@ -2,13 +2,14 @@ import {Router} from 'express';
 import pool from '.././db/pool';
 import {StatusCodes} from "http-status-codes";
 import {authenticateJWT} from "../middleware/auth";
+import { Request, Response } from 'express';
 
 export const messageRouter = Router();
 
-messageRouter.post('/:chatId', authenticateJWT, async (req, res) => {
+messageRouter.post('/:chatId', authenticateJWT, async (req: Request, res: Response) => {
     const { content } = req.body;
     const { chatId } = req.params;
-    const { id: sender_id } = req.user;
+    const { id: sender_id } = req.user!;
 
     if (!content) {
         res.status(StatusCodes.BAD_REQUEST).json({ error: 'Message content is required' });
@@ -43,7 +44,7 @@ messageRouter.post('/:chatId', authenticateJWT, async (req, res) => {
 });
 
 // GET messages by chatId (for viewing messages)
-messageRouter.get('/:chatId', authenticateJWT, async (req, res) => {
+messageRouter.get('/:chatId', authenticateJWT, async (req: Request, res: Response) => {
     const { chatId } = req.params;
 
     try {

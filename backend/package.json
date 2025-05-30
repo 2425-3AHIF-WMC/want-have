@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "main": "dist/server.ts",
   "scripts": {
-    "start": "ts-node src/server.ts",
-    "dev": "ts-node-dev src/server.ts"
+    "start": "ts-node --files src/server.ts",
+    "dev": "ts-node-dev --files src/server.ts"
   },
+
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.9",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^10.0.0",
@@ -17,13 +21,15 @@
     "jsonwebtoken": "^9.0.2",
     "keycloak-connect": "^26.1.1",
     "pg": "^8.15.6",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.1",
+    "@types/express": "^5.0.2",
     "@types/express-session": "^1.18.1",
     "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.8.7",
     "@types/pg": "^8.11.14",
     "@types/socket.io": "^3.0.1",
     "ts-node": "^10.4.0",

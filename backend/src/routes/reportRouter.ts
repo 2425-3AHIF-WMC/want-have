@@ -1,10 +1,11 @@
 import { Router } from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
+import { Request, Response } from 'express';
 
 export const reportRouter = Router();
 
-reportRouter.post('/', async (req, res) => {
+reportRouter.post('/', async (req: Request, res: Response) => {
     const { username, category, description } = req.body;
 
     if (!category || !description) {

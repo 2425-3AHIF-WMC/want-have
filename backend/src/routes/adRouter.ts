@@ -2,11 +2,13 @@ import Router from "express";
 import pool from '../db/pool';
 import {StatusCodes} from "http-status-codes";
 import {authenticateJWT} from "../middleware/auth";
+import { Request, Response } from 'express';
+
 
 export const adRouter = Router();
 
 // Get all ads
-adRouter.get('/', authenticateJWT, async (_req, res) => {
+adRouter.get('/', authenticateJWT, async (_req: Request, res: Response) => {
     try {
         const result = await pool.query('SELECT * FROM ad ORDER BY created_at DESC');
         res.json(result.rows);
@@ -16,7 +18,7 @@ adRouter.get('/', authenticateJWT, async (_req, res) => {
 });
 
 // Create a new ad
-adRouter.post('/', authenticateJWT, async (req, res) => {
+adRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
     const { title, description, price, owner_id, image_url} = req.body;
 
     // Validate input fields
@@ -47,9 +49,9 @@ adRouter.post('/', authenticateJWT, async (req, res) => {
 });
 
 // delete ad
-adRouter.patch('/:id/sold', authenticateJWT, async (req, res) => {
+adRouter.patch('/:id/sold', authenticateJWT, async (req: Request, res: Response) => {
     const ad_id = req.params.id;
-    const user_id = req.user.id;
+    const user_id = req.user!.id;
 
     try {
         const adCheck = await pool.query('SELECT * FROM ad WHERE id = $1 AND owner_id = $2', [ad_id, user_id]);
@@ -66,9 +68,9 @@ adRouter.patch('/:id/sold', authenticateJWT, async (req, res) => {
 });
 
 // edit ad
-adRouter.patch('/:id', authenticateJWT, async (req, res) => {
+adRouter.patch('/:id', authenticateJWT, async (req: Request, res: Response) => {
     const ad_id = req.params.id;
-    const user_id = req.user.id;
+    const user_id = req.user!.id;
     const { title, description, price, image_url } = req.body;
 
     try {

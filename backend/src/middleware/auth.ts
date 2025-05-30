@@ -1,6 +1,6 @@
 import {NextFunction, Request, Response} from "express";
 import {StatusCodes} from "http-status-codes";
-import jwt from "jsonwebtoken";
+import jwt, {JwtPayload} from "jsonwebtoken";
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -17,12 +17,12 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
     }
 
     jwt.verify(token, secret, (err, user) => {
-        if (err) {
+        if (err || !user || typeof user !== "object" || !("id" in user)) {
             res.status(StatusCodes.FORBIDDEN).json({ message: 'Invalid or expired token!' });
             return;
         }
 
-        req.user = user;
+        req.user = { id: (user as JwtPayload).id as string };
         next();
     });
 }
