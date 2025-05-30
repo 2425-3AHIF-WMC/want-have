@@ -1,18 +1,32 @@
 import express from 'express';
-import {userRouter} from "./routes/userRouter";
-import {adRouter} from "./routes/adRouter";
-import {chatRouter} from "./routes/chatRouter";
-import {messageRouter} from "./routes/messageRouter";
+import { userRouter } from "./routes/userRouter";
+import { adRouter } from "./routes/adRouter";
+import { chatRouter } from "./routes/chatRouter";
+import { messageRouter } from "./routes/messageRouter";
 import http from "http";
 import { Server } from "socket.io";
 import { createClient } from "@supabase/supabase-js";
 import pool from "./db/pool";
+import { keycloak, sessionMiddleware } from "./middleware/keycloak";
+import { loginRouter } from "./routes/loginRouter";
 import { reportRouter } from "./routes/reportRouter";
+import dotenv from "dotenv";
 
+// Lade Umgebungsvariablen aus .env-Datei
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-let supabase = createClient("", "");
+
+if (!process.env.ANON_KEY) {
+    throw new Error("ANON_KEY is undefined. Please check your .env file.");
+}
+
+const supabase = createClient(
+    "https://otrclrdtfqsjhuuxkhzk.supabase.co",
+    process.env.ANON_KEY
+);
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -21,6 +35,8 @@ const io = new Server(server, {
     }
 });
 
+app.use(sessionMiddleware);
+app.use(keycloak.middleware({ logout: "/logout" }));
 app.use(express.json());
 
 app.use('/users', userRouter);
@@ -28,13 +44,7 @@ app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
 app.use('/messages', messageRouter);
 app.use('/reports', reportRouter);
-
-
-if (process.env.ANON_KEY) {
-    supabase = createClient("https://otrclrdtfqsjhuuxkhzk.supabase.co", process.env.ANON_KEY);
-} else {
-    throw new Error("undefined anon key");
-}
+app.use("/auth", loginRouter);
 
 io.on("connection", (socket) => {
     console.log("A user connected");
