@@ -46,13 +46,50 @@ messageRouter.post('/:chatId', authenticateJWT, async (req: Request, res: Respon
 // GET messages by chatId (for viewing messages)
 messageRouter.get('/:chatId', authenticateJWT, async (req: Request, res: Response) => {
     const { chatId } = req.params;
+    const userId: string = req.user!.id;
 
     try {
         const messages = await pool.query(
             `SELECT * FROM message WHERE chat_id = $1 ORDER BY timestamp ASC`,
             [chatId]
         );
+
+        await pool.query(
+            `UPDATE message 
+             SET read = TRUE 
+             WHERE chat_id = $1 AND sender_id != $2 AND read = FALSE`,
+            [chatId, userId]
+        );
+
         res.status(StatusCodes.OK).json({ messages: messages.rows });
+    } catch (err) {
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: err });
+    }
+});
+
+// Neue Route für unread count
+messageRouter.get('/unread-count', authenticateJWT, async (req, res) => {
+    const userId = req.user!.id;
+
+    try {
+        // Hole alle Nachrichten aus Chats, in denen der User beteiligt ist, aber nicht der Sender ist
+        const result = await pool.query(
+            `
+            SELECT COUNT(*) 
+            FROM message m
+            JOIN chat c ON m.chat_id = c.id
+            WHERE m.read = FALSE 
+              AND m.sender_id != $1 
+              AND (c.user1_id = $1 OR c.user2_id = $1)
+            `,
+            [userId]
+        );
+
+        const count = parseInt(result.rows[0].count, 10);
+
+        res.status(StatusCodes.OK).json({
+            unreadCount: count > 99 ? '99+' : count
+        });
     } catch (err) {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: err });
     }

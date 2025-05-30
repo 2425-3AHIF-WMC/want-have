@@ -4,7 +4,6 @@ import {StatusCodes} from "http-status-codes";
 import {authenticateJWT} from "../middleware/auth";
 import { Request, Response } from 'express';
 
-
 export const adRouter = Router();
 
 // Get all ads
@@ -45,6 +44,26 @@ adRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
         res.status(StatusCodes.CREATED).json(result.rows[0]);
     } catch (err) {
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to create ad' });
+    }
+});
+
+adRouter.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query(
+            'SELECT * FROM ad WHERE id = $1',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            res.status(StatusCodes.NOT_FOUND).json({ error: 'Ad not found' });
+            return;
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch ad', details: err });
     }
 });
 
