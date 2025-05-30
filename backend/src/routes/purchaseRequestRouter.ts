@@ -48,7 +48,6 @@ purchaseRequestRouter.post('/', authenticateJWT, async (req, res) => {
 
         res.status(StatusCodes.CREATED).json(insertRes.rows[0]);
     } catch (error) {
-        console.error(error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error' });
     }
 });
@@ -67,7 +66,6 @@ purchaseRequestRouter.get('/', authenticateJWT, async (req, res) => {
 
         res.json(requests.rows);
     } catch (error) {
-        console.error(error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error' });
     }
 });
@@ -99,7 +97,7 @@ purchaseRequestRouter.patch('/:id', authenticateJWT, async (req, res) => {
 
         if (status === 'accepted') {
             const { ad_id, buyer_id } = reqRes.rows[0];
-            
+
             // Prüfen, ob ein Chat zwischen Käufer und Verkäufer existiert
             const chatRes = await pool.query(
                 `SELECT id FROM chat WHERE 
@@ -127,7 +125,6 @@ purchaseRequestRouter.patch('/:id', authenticateJWT, async (req, res) => {
         res.json({ message: 'Request rejected' });
 
     } catch (error) {
-        console.error(error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: 'Database error' });
     }
 });

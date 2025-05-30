@@ -3,17 +3,16 @@ import {userRouter} from "./routes/userRouter";
 import {adRouter} from "./routes/adRouter";
 import {chatRouter} from "./routes/chatRouter";
 import {messageRouter} from "./routes/messageRouter";
-import {reportRouter} from "./routes/reportRouter";
 import http from "http";
 import { Server } from "socket.io";
 import { createClient } from "@supabase/supabase-js";
 import pool from "./db/pool";
+import { reportRouter } from "./routes/reportRouter";
+
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-let supabase = createClient("", ""); // später initialisiert
-
+let supabase = createClient("", "");
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -24,12 +23,12 @@ const io = new Server(server, {
 
 app.use(express.json());
 
-// REST-API-Routen
 app.use('/users', userRouter);
 app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
 app.use('/messages', messageRouter);
 app.use('/reports', reportRouter);
+
 
 if (process.env.ANON_KEY) {
     supabase = createClient("https://otrclrdtfqsjhuuxkhzk.supabase.co", process.env.ANON_KEY);
@@ -37,7 +36,6 @@ if (process.env.ANON_KEY) {
     throw new Error("undefined anon key");
 }
 
-// Socket.IO Events
 io.on("connection", (socket) => {
     console.log("A user connected");
 
@@ -88,14 +86,10 @@ io.on("connection", (socket) => {
         }
 
         try {
-            const result = await pool.query(
-                "INSERT INTO messages (chat_id, sender_id, content) VALUES ($1, $2, $3) RETURNING *",
+            await pool.query(
+                "INSERT INTO messages (chat_id, sender_id, content) VALUES ($1, $2, $3)",
                 [chatId, senderId, content]
             );
-
-            const newMessage = result.rows[0];
-            io.to(chatId).emit("new-message", newMessage);
-
         } catch (err) {
             console.error("Failed to insert message:", err);
         }

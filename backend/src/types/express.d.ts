@@ -1,11 +1,10 @@
-import { User } from '../models/User'; // Pfad anpassen, je nachdem wo User.ts liegt
+import 'express';
 
-declare global {
-    namespace Express {
-        interface Request {
-            user?: User; // optional, weil es nicht immer gesetzt ist
-        }
+declare module 'express' {
+    interface Request {
+        user?: {
+            id: string; // adjust type if your user id is a number or something else
+            // add other user properties here if needed
+        };
     }
 }
-
-export {};
