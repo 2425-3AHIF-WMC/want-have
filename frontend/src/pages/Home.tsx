@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -8,6 +7,7 @@ import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Tag } from "lucide-react";
 import { Link } from "react-router-dom";
+import {useAuth} from ".././context/AuthContext";
 
 type ProductPrice = number | "Zu verschenken";
 
@@ -188,6 +188,9 @@ const Home = () => {
         setFilters(newFilters);
     };
 
+    const { user } = useAuth();
+    const currentUserId = user?.id || ""; // fallback if not logged in
+
     return (
         <div className="flex flex-col min-h-screen" id="home-section">
             <Navbar />
@@ -287,7 +290,7 @@ const Home = () => {
                                 <TabsContent value="newest" className="mt-0">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {filteredProducts.map((product) => (
-                                            <ProductCard key={product.id} {...product} />
+                                            <ProductCard key={product.id} {...product} currentUserId={currentUserId} />
                                         ))}
                                     </div>
                                 </TabsContent>
@@ -298,7 +301,7 @@ const Home = () => {
                                             .slice()
                                             .sort((a, b) => b.seller.rating - a.seller.rating)
                                             .map((product) => (
-                                                <ProductCard key={product.id} {...product} />
+                                                <ProductCard key={product.id} {...product} currentUserId={currentUserId}/>
                                             ))}
                                     </div>
                                 </TabsContent>
@@ -306,7 +309,7 @@ const Home = () => {
                                 <TabsContent value="free" className="mt-0">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {filteredProducts.filter((p) => p.isFree).map((product) => (
-                                            <ProductCard key={product.id} {...product} />
+                                            <ProductCard key={product.id} {...product} currentUserId={currentUserId}/>
                                         ))}
                                     </div>
                                 </TabsContent>

@@ -1,53 +1,63 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useKeycloak } from "@react-keycloak/web";
+import axios from "axios";
+
+interface User {
+    id: string;
+    username: string;
+    email?: string;
+    name?: string;
+}
 
 interface AuthContextType {
-    user: { id: string; username: string } | null;
-    login: (credentials: { email: string; password: string }) => Promise<void>;
+    user: User | null;
+    isLoading: boolean;
+    login: () => void;
     logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>(null!);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<{ id: string; username: string } | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { keycloak, initialized } = useKeycloak();
+    const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Beim Laden prüfen ob User eingeloggt ist
-        const checkAuth = async () => {
-            try {
-                const res = await axios.get('http://localhost:3000/auth/me', {
-                    withCredentials: true
-                });
-                setUser(res.data);
-            } catch (err) {
+        const fetchUser = async () => {
+            if (keycloak?.authenticated) {
+                try {
+                    const res = await axios.get<User>("http://localhost:3000/user/me", {
+                        headers: { Authorization: `Bearer ${keycloak.token}` },
+                        withCredentials: true,
+                    });
+                    setUser(res.data);
+                } catch (err) {
+                    setUser(null);
+                }
+            } else {
                 setUser(null);
             }
+            setIsLoading(false);
         };
-        checkAuth();
-    }, []);
 
-    const login = async (credentials: { email: string; password: string }) => {
-        const res = await axios.post('http://localhost:3000/auth/login', credentials, {
-            withCredentials: true
-        });
-        setUser(res.data.user);
-    };
+        if (initialized) {
+            fetchUser();
+        }
+    }, [keycloak, initialized]);
 
-    const logout = async () => {
-        await axios.post('http://localhost:3000/auth/logout', {}, {
-            withCredentials: true
-        });
-        setUser(null);
-    };
+    const login = () => keycloak.login();
+    const logout = () => keycloak.logout();
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
-}
+};
 
-export function useAuth() {
-    return useContext(AuthContext);
-}
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) throw new Error("useAuth must be used within AuthProvider");
+    return context;
+};
