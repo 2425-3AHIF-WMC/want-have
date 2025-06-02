@@ -14,8 +14,10 @@ interface ProductCardProps {
     seller: {
         name: string;
         rating: number;
+        id: string;
     };
     isFree?: boolean;
+    currentUserId: string;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -27,12 +29,45 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                                      createdAt,
                                                      seller,
                                                      isFree,
+                                                     currentUserId,
                                                  }) => {
     const formattedDate = createdAt.toLocaleDateString("de-DE", {
         year: "numeric",
         month: "long",
         day: "numeric",
     });
+
+    const handleSendRequest = async () => {
+        try {
+            await fetch("/api/requests", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    productId: id,
+                    buyerId: currentUserId,
+                    sellerId: seller.id,
+                }),
+            });
+            alert("Anfrage wurde erfolgreich gesendet!");
+        } catch (error) {
+            alert("Fehler beim Senden der Anfrage.");
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm("Willst du die Anzeige wirklich löschen?")) return;
+        try {
+            await fetch(`/api/products/${id}`, {
+                method: "DELETE",
+            });
+            alert("Anzeige gelöscht.");
+            window.location.reload(); // Optional: Seite neu laden
+        } catch (error) {
+            alert("Fehler beim Löschen.");
+        }
+    };
 
     return (
         <Card className="bg-white shadow-md rounded-md overflow-hidden">
@@ -61,9 +96,64 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 <p className="text-marktx-gray-400 text-xs mt-2">
                     Erstellt am: {formattedDate}
                 </p>
+
+                {/* Buttons */}
+                <div className="mt-4">
+                    {currentUserId === seller.id ? (
+                        <button
+                            onClick={handleDelete}
+                            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                            Anzeige löschen
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSendRequest}
+                            className="px-4 py-2 bg-marktx-blue-600 text-white rounded hover:bg-marktx-blue-700"
+                        >
+                            Anfrage senden
+                        </button>
+                    )}
+                </div>
             </CardContent>
         </Card>
     );
+};
+
+// Neue Wrapper-Komponente
+interface Product {
+    id: string;
+    title: string;
+    price: ProductPrice;
+    imageUrl: string;
+    condition: string;
+    createdAt: Date;
+    seller: {
+        name: string;
+        rating: number;
+        id: string;
+    };
+    isFree?: boolean;
+}
+
+interface ProductCardWrapperProps {
+    product: Product;
+    currentUserId: string;
+    key?: React.Key;
+}
+
+export const ProductCardWrapper: React.FC<ProductCardWrapperProps> = ({ product, currentUserId }) => {
+    return <ProductCard
+        id={product.id}
+        title={product.title}
+        price={product.price}
+        imageUrl={product.imageUrl}
+        condition={product.condition}
+        createdAt={product.createdAt}
+        seller={product.seller}
+        isFree={product.isFree}
+        currentUserId={currentUserId}
+    />;
 };
 
 export default ProductCard;

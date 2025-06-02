@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -204,9 +205,9 @@ const Home = () => {
                                         Angebote stöbern
                                     </Button>
                                 </a>
-                                    <Button className="btn-accent">
-                                        <Link to="/create">Anzeige erstellen</Link>
-                                    </Button>
+                                <Button className="btn-accent">
+                                    <Link to="/create">Anzeige erstellen</Link>
+                                </Button>
                             </div>
                         </div>
                     </div>

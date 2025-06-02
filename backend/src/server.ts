@@ -14,6 +14,14 @@ import {loginRouter} from "./routes/loginRouter";
 import {purchaseRequestRouter} from "./routes/purchaseRequestRouter";
 import dotenv from 'dotenv';
 import {recommendationRouter} from "./routes/recommendationRouter";
+import {initSocket} from "../socket/broadcast";
+import fileUpload, { UploadedFile } from "express-fileupload";
+import path from "path";
+import fs from "fs";
+import { PostgrestSingleResponse } from '@supabase/supabase-js';
+
+
+
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -33,11 +41,26 @@ const io = new Server(server, {
         methods: ["GET", "POST"]
     }
 });
-
+app.use(fileUpload()) // Aktiviert Dateiupload
 app.use(express.json());
 app.use(cors());
 app.use(sessionMiddleware);
 app.use(keycloak.middleware({ logout: "/logout" }));
+app.post("/upload", function (req, res) {
+    if (!req.files || !req.files.datei) {
+        res.status(400).send("Keine Datei hochgeladen");
+        return;
+    }
+
+    const datei = req.files.datei as UploadedFile;
+
+    const pfad = path.join(__dirname, "uploads", datei.name);
+
+    fs.writeFileSync(pfad, datei.data);
+
+    res.send("Datei gespeichert als: " + datei.name);
+});
+
 app.use('/users', userRouter);
 app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
@@ -52,9 +75,39 @@ if (process.env.SUPABASE_KEY && process.env.SUPABASE_URL) {
 } else {
     throw new Error("undefined anon key");
 }
+const onlineUsers = new Map<string, string>(); // userId → socketId
+initSocket(io);
 
 io.on("connection", (socket) => {
+
     console.log("A user connected");
+
+    socket.on("user-online", (userId: string) => {
+        onlineUsers.set(userId, socket.id);
+        console.log(`✅ ${userId} ist online`);
+        io.emit("user-status", { userId, status: "online" });
+    });
+
+    socket.on("disconnect", async () => {
+        for (const [userId, id] of onlineUsers.entries()) {
+            if (id === socket.id) {
+                onlineUsers.delete(userId);
+                console.log(`❌ ${userId} ist offline`);
+                io.emit("user-status", { userId, status: "offline" });
+                break;
+            }
+        }
+
+        if (socket.data.supabaseChannel) {
+            try {
+                const result = await supabase.removeChannel(socket.data.supabaseChannel);
+                console.log("Channel removed:", result);
+            } catch (err) {
+                console.error("Failed to remove channel:", err);
+            }
+        }
+    });
+
 
     socket.on("join-chat", (chatId: string) => {
         console.log(`User joined chat ${chatId}`);
@@ -81,18 +134,6 @@ io.on("connection", (socket) => {
         socket.data.supabaseChannel = channel;
     });
 
-    socket.on("disconnect", async () => {
-        console.log("A user disconnected");
-
-        if (socket.data.supabaseChannel) {
-            try {
-                const result = await supabase.removeChannel(socket.data.supabaseChannel);
-                console.log("Channel removed:", result);
-            } catch (err) {
-                console.error("Failed to remove channel:", err);
-            }
-        }
-    });
 
     socket.on("send-message", async (data) => {
         const { chatId, senderId, content } = data;
@@ -112,6 +153,68 @@ io.on("connection", (socket) => {
         }
     });
 });
+app.post('/purchase-request/:adId', async (req, res) => {
+    const adId = req.params.adId;
+    const buyerId = req.body.buyerId;
+
+    // 1. Anzeige abrufen, um Verkäufer herauszufinden
+    const adResult = await supabase
+        .from('ad')
+        .select('user_id, title')
+        .eq('id', adId)
+        .single();
+
+    if (adResult.error || !adResult.data) {
+        res.status(404).send({ error: "Anzeige nicht gefunden" });
+        return;
+    }
+
+    const sellerId = adResult.data.user_id;
+    const adTitle = adResult.data.title;
+
+
+    // 2. Eintrag in purchase_request
+    const purchaseInsert = await supabase
+        .from('purchase_request')
+        .insert([{
+            buyer_id: buyerId,
+            ad_id: adId,
+            seller_id: sellerId
+        }])
+        .select()
+        .single();
+
+    // 3. Benachrichtigung für Verkäufer
+    await supabase
+        .from('notification')
+        .insert([{
+            user_id: sellerId,
+            type: 'purchase_request',
+            related_id: purchaseInsert.data.id,
+            message: `Du hast eine Anfrage für deine Anzeige "${adTitle}" erhalten.`,
+        }]);
+
+    res.send({ success: true });
+});
+app.delete('/api/products/:id', async (req, res) => {
+    const productId = req.params.id;
+
+    // Optional nur seine eigene Anzeige löschen kann
+
+    const { error } = await supabase
+        .from('ad')
+        .delete()
+        .eq('id', productId);
+
+    if (error) {
+        console.error('Fehler beim Löschen:', error);
+        res.status(500).send({ error: 'Löschen fehlgeschlagen' });
+        return;
+    }
+
+    res.send({ success: true, message: 'Anzeige gelöscht' });
+});
+
 
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);

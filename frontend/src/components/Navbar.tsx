@@ -11,13 +11,19 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = forwardRef((props, ref) => {
+    const { user } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [chatId, setChatId] = useState<string | null>(null); // 💬 Chat-ID hier
-    const navigate = useNavigate();
+    const [chatId, setChatId] = useState<string | null>(null);
 
+    // Badge States
+    const [hasNewMessages, setHasNewMessages] = useState(false);
+    const [hasNewNotifications, setHasNewNotifications] = useState(false);
+
+    const navigate = useNavigate();
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -36,20 +42,39 @@ const Navbar = forwardRef((props, ref) => {
         navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
     };
 
-    // Simuliere aktuellen Benutzer-Chat (z. B. aus Session oder API)
+    // ChatId aus User ableiten oder fetchen
     useEffect(() => {
-        const fetchChatId = async () => {
-            try {
-                // ⛔ Ersetze das später mit echter Logik oder API
-                const simulatedChatId = "abc123"; // Beispiel-ID
-                setChatId(simulatedChatId);
-            } catch (err) {
-                console.error("Fehler beim Laden der Chat-ID", err);
-            }
-        };
+        if (user) {
+            // Hier kannst du auch eine API-Abfrage machen, um Chat-ID zu holen
+            const simulatedChatId = "abc123"; // Beispiel
+            setChatId(simulatedChatId);
+        } else {
+            setChatId(null);
+        }
+    }, [user]);
 
-        fetchChatId();
-    }, []);
+    // Badge-Status abrufen (nur wenn User eingeloggt)
+    useEffect(() => {
+        async function fetchNotificationStatus() {
+            if (!user) {
+                setHasNewMessages(false);
+                setHasNewNotifications(false);
+                return;
+            }
+            try {
+                const resMessages = await axios.get("http://localhost:3000/api/hasNewMessages", { withCredentials: true });
+                setHasNewMessages(resMessages.data.hasNew);
+
+                const resNotifications = await axios.get("http://localhost:3000/api/hasNewNotifications", { withCredentials: true });
+                setHasNewNotifications(resNotifications.data.hasNew);
+            } catch (err) {
+                console.error("Fehler beim Laden der Benachrichtigungsdaten", err);
+                setHasNewMessages(false);
+                setHasNewNotifications(false);
+            }
+        }
+        fetchNotificationStatus();
+    }, [user]);
 
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -66,25 +91,41 @@ const Navbar = forwardRef((props, ref) => {
                     <div className="hidden md:flex items-center space-x-4">
                         <Button variant="ghost" size="icon" asChild>
                             <Link to="/notifications" aria-label="Benachrichtigungen">
-                                <Bell size={20} />
+                                <div className="relative">
+                                    <Bell size={20} />
+                                    {hasNewNotifications && (
+                                        <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />
+                                    )}
+                                </div>
                             </Link>
                         </Button>
+
                         <Button variant="ghost" size="icon" asChild>
                             <Link
                                 to={chatId ? `/messages/${chatId}` : "#"}
                                 aria-label="Nachrichten"
                                 onClick={(e) => {
-                                    if (!chatId) e.preventDefault();
+                                    if (!chatId) {
+                                        e.preventDefault();
+                                        alert("Bitte zuerst anmelden, um Nachrichten zu sehen!");
+                                    }
                                 }}
                             >
-                                <MessageSquare size={20} />
+                                <div className="relative">
+                                    <MessageSquare size={20} />
+                                    {hasNewMessages && (
+                                        <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />
+                                    )}
+                                </div>
                             </Link>
                         </Button>
+
                         <Button variant="ghost" size="icon" asChild>
                             <Link to="/profile" aria-label="Profil">
                                 <User size={20} />
                             </Link>
                         </Button>
+
                         <Button className="btn-primary" asChild>
                             <Link to="/create">
                                 <Plus size={20} className="mr-2" />
@@ -109,14 +150,32 @@ const Navbar = forwardRef((props, ref) => {
                                 <Plus size={20} className="mr-2" />
                                 Anzeige erstellen
                             </Link>
-                            <Link to="/notifications" className="flex items-center px-4 py-2">
+
+                            <Link to="/notifications" className="flex items-center px-4 py-2 relative">
                                 <Bell size={20} className="mr-2" />
                                 Benachrichtigungen
+                                {hasNewNotifications && (
+                                    <span className="absolute top-3 left-28 block h-2 w-2 rounded-full bg-red-600" />
+                                )}
                             </Link>
-                            <Link to={chatId ? `/messages/${chatId}` : "#"} className="flex items-center px-4 py-2">
+
+                            <Link
+                                to={chatId ? `/messages/${chatId}` : "#"}
+                                className="flex items-center px-4 py-2"
+                                onClick={(e) => {
+                                    if (!chatId) {
+                                        e.preventDefault();
+                                        alert("Bitte zuerst anmelden, um Nachrichten zu sehen!");
+                                    }
+                                }}
+                            >
                                 <MessageSquare size={20} className="mr-2" />
                                 Nachrichten
+                                {hasNewMessages && (
+                                    <span className="absolute top-3 left-20 block h-2 w-2 rounded-full bg-red-600" />
+                                )}
                             </Link>
+
                             <Link to="/profile" className="flex items-center px-4 py-2">
                                 <User size={20} className="mr-2" />
                                 Profil
