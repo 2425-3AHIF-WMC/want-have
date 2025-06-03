@@ -24,11 +24,14 @@ import { Toaster } from "sonner";
 import "./index.css";
 import MessagesList from "./components/MessagesList";
 import Notifications from "./pages/Notifications";
+import {ReactKeycloakProvider} from "@react-keycloak/web";
+import {keycloak} from "./services/keycloak";
 
 const queryClient = new QueryClient();
 
 const App = () => (
     <QueryClientProvider client={queryClient}>
+        <ReactKeycloakProvider authClient={keycloak}>
         <AuthProvider>
         <TooltipProvider>
             <Toaster />
@@ -60,6 +63,7 @@ const App = () => (
             </BrowserRouter>
         </TooltipProvider>
         </AuthProvider>
+        </ReactKeycloakProvider>
     </QueryClientProvider>
 );
 

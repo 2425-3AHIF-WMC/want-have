@@ -21,6 +21,7 @@ import { keycloak, sessionMiddleware } from "./middleware/keycloak";
 import { authenticateJWT } from "./middleware/auth";
 import {initSocket} from "../socket/broadcast";
 import {notificationRouter} from "./routes/notificationRouter";
+import {imageRouter} from "./routes/imageRouter";
 
 dotenv.config();
 
@@ -182,7 +183,7 @@ app.use('/auth', loginRouter);
 app.use('/requests', purchaseRequestRouter);
 app.use('/recommendations', recommendationRouter);
 app.use("/notifications", notificationRouter);
-
+app.use("/images", imageRouter);
 
 app.delete('/api/products/:id', authenticateJWT, async (req, res) => {
         const productId = req.params.id;
