@@ -1,8 +1,20 @@
+
 import React from "react";
-import { Card, CardContent } from "./ui/card";
+import { Link } from "react-router-dom";
+import {
+    Card,
+    CardContent
+} from "./ui/card";
 import { Star } from "lucide-react";
+import axios from "axios";
 
 export type ProductPrice = number | "Zu verschenken";
+
+interface Seller {
+    name: string;
+    rating: number;
+    id: string;
+}
 
 interface ProductCardProps {
     id: string;
@@ -11,13 +23,10 @@ interface ProductCardProps {
     imageUrl: string;
     condition: string;
     createdAt: Date;
-    seller: {
-        name: string;
-        rating: number;
-        id: string;
-    };
+    seller: Seller;
     isFree?: boolean;
     currentUserId: string;
+    onDeleteSuccess?: () => void; // Callback, wenn erfolgreich gelöscht
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -30,6 +39,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                                      seller,
                                                      isFree,
                                                      currentUserId,
+                                                     onDeleteSuccess
                                                  }) => {
     const formattedDate = createdAt.toLocaleDateString("de-DE", {
         year: "numeric",
@@ -39,45 +49,60 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     const handleSendRequest = async () => {
         try {
-            await fetch("/api/requests", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
+            const res = await axios.post(
+                `${process.env.REACT_APP_API_URL}/requests/${id}`,
+                {
+                    // Backend liest userId aus JWT
                 },
-                body: JSON.stringify({
-                    productId: id,
-                    buyerId: currentUserId,
-                    sellerId: seller.id,
-                }),
-            });
-            alert("Anfrage wurde erfolgreich gesendet!");
-        } catch (error) {
-            alert("Fehler beim Senden der Anfrage.");
+                { withCredentials: true }
+            );
+            if (res.status === 201) {
+                alert("Anfrage wurde erfolgreich gesendet!");
+            } else {
+                alert("Fehler beim Senden der Anfrage.");
+            }
+        } catch (err: any) {
+            console.error("Fehler beim Senden der Anfrage:", err);
+            const msg = err.response?.data?.error || err.message || "Unbekannter Fehler";
+            alert("Fehler: " + msg);
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm("Willst du die Anzeige wirklich löschen?")) return;
+        if (!window.confirm("Willst du die Anzeige wirklich löschen?")) return;
         try {
-            await fetch(`/api/products/${id}`, {
-                method: "DELETE",
-            });
-            alert("Anzeige gelöscht.");
-            window.location.reload(); // Optional: Seite neu laden
-        } catch (error) {
-            alert("Fehler beim Löschen.");
+            const res = await axios.delete(
+                `${process.env.REACT_APP_API_URL}/api/products/${id}`,
+                { withCredentials: true }
+            );
+            if (res.status === 200) {
+                alert("Anzeige gelöscht.");
+                onDeleteSuccess && onDeleteSuccess();
+            } else {
+                alert("Fehler beim Löschen der Anzeige.");
+            }
+        } catch (err: any) {
+            console.error("Fehler beim Löschen:", err);
+            const msg = err.response?.data?.error || err.message || "Unbekannter Fehler";
+            alert("Fehler: " + msg);
         }
     };
 
     return (
         <Card className="bg-white shadow-md rounded-md overflow-hidden">
-            <a href={`/product/${id}`}>
-                <img src={imageUrl} alt={title} className="w-full h-48 object-cover" />
-            </a>
+            <Link to={`/product/${id}`}>
+                <img
+                    src={imageUrl}
+                    alt={title}
+                    className="w-full h-48 object-cover"
+                />
+            </Link>
             <CardContent className="p-4">
-                <a href={`/product/${id}`} className="hover:underline">
-                    <h3 className="text-lg font-semibold text-marktx-blue-700 mb-2 line-clamp-2">{title}</h3>
-                </a>
+                <Link to={`/product/${id}`} className="hover:underline">
+                    <h3 className="text-lg font-semibold text-marktx-blue-700 mb-2 line-clamp-2">
+                        {title}
+                    </h3>
+                </Link>
                 <p className="text-marktx-gray-600 text-sm mb-3">
                     {typeof price === "number" ? `${price.toFixed(2)} €` : price}
                     {isFree && <span className="ml-1 text-marktx-green-600"> (Gratis)</span>}
@@ -120,7 +145,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     );
 };
 
-// Neue Wrapper-Komponente
+// Wrapper-Komponente, angepasst an API-Datenformat
 interface Product {
     id: string;
     title: string;
@@ -128,11 +153,7 @@ interface Product {
     imageUrl: string;
     condition: string;
     createdAt: Date;
-    seller: {
-        name: string;
-        rating: number;
-        id: string;
-    };
+    seller: Seller;
     isFree?: boolean;
 }
 
@@ -140,20 +161,28 @@ interface ProductCardWrapperProps {
     product: Product;
     currentUserId: string;
     key?: React.Key;
+    onDeleteSuccess?: () => void;
 }
 
-export const ProductCardWrapper: React.FC<ProductCardWrapperProps> = ({ product, currentUserId }) => {
-    return <ProductCard
-        id={product.id}
-        title={product.title}
-        price={product.price}
-        imageUrl={product.imageUrl}
-        condition={product.condition}
-        createdAt={product.createdAt}
-        seller={product.seller}
-        isFree={product.isFree}
-        currentUserId={currentUserId}
-    />;
+export const ProductCardWrapper: React.FC<ProductCardWrapperProps> = ({
+                                                                          product,
+                                                                          currentUserId,
+                                                                          onDeleteSuccess
+                                                                      }) => {
+    return (
+        <ProductCard
+            id={product.id}
+            title={product.title}
+            price={product.price}
+            imageUrl={product.imageUrl}
+            condition={product.condition}
+            createdAt={product.createdAt}
+            seller={product.seller}
+            isFree={product.isFree}
+            currentUserId={currentUserId}
+            onDeleteSuccess={onDeleteSuccess}
+        />
+    );
 };
 
 export default ProductCard;

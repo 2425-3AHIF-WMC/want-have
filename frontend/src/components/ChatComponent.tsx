@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -5,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Send } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 
 interface Message {
     id: string;
@@ -25,98 +28,95 @@ interface ChatComponentProps {
     };
 }
 
-const ChatComponent = ({ chatId, userId, chatPartner }: ChatComponentProps) => {
+const ChatComponent: React.FC<ChatComponentProps> = ({ chatId, userId, chatPartner }) => {
     // Nachrichten des aktuellen Chats
     const [messages, setMessages] = useState<Message[]>([]);
-
-    // Eingabefeld der neuen Nachricht
+    // Eingabe für neue Nachricht
     const [newMessage, setNewMessage] = useState("");
-
-    // Socket-Verbindung wird als Ref gehalten, da sie sich nicht mit jedem Render ändert
+    // Socket-Verbindung als Ref
     const socketRef = useRef<Socket | null>(null);
-
-    // Ladezustand für Nachrichten (für Ladeanzeige)
+    // Ladezustand
     const [loadingMessages, setLoadingMessages] = useState(false);
-
-    // Status der Nachricht beim Senden (für Optimistic UI)
+    // Status beim Senden (Optimistic UI)
     const [sendingMessage, setSendingMessage] = useState(false);
-
-    // Referenz auf das Ende der Nachrichtenliste für automatisches Scrollen
+    // Ref für automatisches Scrollen
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    // Fehler beim Laden
+    const [error, setError] = useState<string | null>(null);
 
-    // --- 1. Socket-Verbindung und Fehlerhandling verbessern ---
     useEffect(() => {
-        // Socket nur einmal aufbauen
-        const socket = io("http://localhost:3000");
-
-        // Socket in Ref speichern
+        // Socket-URL aus Umgebungsvariable
+        const socketURL = process.env.REACT_APP_SOCKET_URL!;
+        const socket = io(socketURL, {
+            withCredentials: true
+        });
         socketRef.current = socket;
 
-        // Fehlerhandling: auf Verbindungsfehler reagieren
         socket.on("connect_error", (err) => {
-            console.error("Socket Verbindungsfehler:", err);
+            console.error("Socket-Verbindungsfehler:", err);
+            setError("Verbindung zum Chat-Server fehlgeschlagen.");
         });
 
-        // Nachrichten empfangen und in den State einfügen
         socket.on("new-message", (message: Message) => {
             setMessages((prev) => [...prev, message]);
         });
 
-        // Beim Verlassen der Komponente Socket schließen
         return () => {
             socket.disconnect();
+            socketRef.current = null;
         };
     }, []);
 
-    // --- 2. Mehrere Chats unterstützen / Chat wechseln ---
     useEffect(() => {
         const socket = socketRef.current;
         if (!socket) return;
 
-        // Alte Nachrichten löschen beim Chatwechsel
+        // Alte Subscription/Kanal verlassen
+        socket.emit("leave-chat", chatId);
+
+        // Nachrichten zurücksetzen & neu laden
         setMessages([]);
-
-        // Ladezustand setzen
         setLoadingMessages(true);
+        setError(null);
 
-        // Join neuen Chat (Server soll "leave" vom alten Chat erkennen und machen)
+        // Socket dem Chat beitreten lassen
         socket.emit("join-chat", chatId);
 
         // Nachrichten vom Server laden
-        const fetchMessages = async () => {
-            try {
-                const response = await axios.get(`http://localhost:3000/messages/${chatId}`);
-                setMessages(response.data);
-            } catch (err) {
+        axios
+            .get<Message[]>(`${process.env.REACT_APP_API_URL}/messages/${chatId}`, {
+                withCredentials: true
+            })
+            .then((res) => {
+                setMessages(res.data);
+            })
+            .catch((err) => {
                 console.error("Fehler beim Laden der Nachrichten:", err);
-            } finally {
+                setError("Fehler beim Laden der Nachrichten.");
+            })
+            .finally(() => {
                 setLoadingMessages(false);
-            }
-        };
-        fetchMessages();
+            });
 
-        // Clean-Up beim Chatwechsel: Verlassen des alten Chats
+        // Clean-Up beim Chatwechsel
         return () => {
             socket.emit("leave-chat", chatId);
         };
     }, [chatId]);
 
-    // --- 3. Automatisches Scrollen zu neuen Nachrichten ---
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
     }, [messages]);
 
-    // --- 4. Nachricht senden mit Optimistic UI und Fehlerhandling ---
     const sendMessage = async () => {
-        const trimmedMessage = newMessage.trim();
-        if (!trimmedMessage) return;
+        const trimmed = newMessage.trim();
+        if (!trimmed) return;
 
-        // Optimistic UI: Nachricht direkt anzeigen (ohne id, nur temporär)
         const optimisticMessage: Message = {
             id: "temp-" + Date.now(),
-            content: trimmedMessage,
+            content: trimmed,
             sender_id: userId,
             chat_id: chatId,
             created_at: new Date().toISOString(),
@@ -126,70 +126,59 @@ const ChatComponent = ({ chatId, userId, chatPartner }: ChatComponentProps) => {
         setSendingMessage(true);
 
         try {
-            // Nachricht an Server senden
-            await axios.post(`http://localhost:3000/messages`, {
-                chatId,
-                senderId: userId,
-                content: trimmedMessage,
-            });
-
-            // Socket-Event senden (damit andere Clients aktualisiert werden)
-            socketRef.current?.emit("send-message", {
-                chatId,
-                senderId: userId,
-                content: trimmedMessage,
-            });
-
-            // Sending abgeschlossen
+            const res = await axios.post(
+                `${process.env.REACT_APP_API_URL}/messages`,
+                {
+                    chatId,
+                    senderId: userId,
+                    content: trimmed,
+                },
+                { withCredentials: true }
+            );
+            // Server sendet per Socket.IO den eigentlichen „new-message“-Event, sodass hier
+            // die optimistische Nachricht durch die echte Nachricht mit „richtiger ID“ aktualisiert wird.
             setSendingMessage(false);
         } catch (err) {
             console.error("Nachricht konnte nicht gesendet werden:", err);
             setSendingMessage(false);
-            // Optional: Optimistic Nachricht zurücknehmen oder Fehleranzeige ergänzen
-            setMessages((prev) => prev.filter((msg) => msg.id !== optimisticMessage.id));
+            // Optimistische Nachricht entfernen
+            setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
             alert("Nachricht konnte nicht gesendet werden.");
         }
     };
 
-    // --- 5. Formatierung von Zeit (z.B. 13:45) ---
     const formatTime = (isoString: string) => {
         const date = new Date(isoString);
         return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     };
 
-    // --- 6. Nachrichten mit Markdown und Emojis rendern ---
-    // (Minimaler Support: einfache Ersetzung, kann durch Bibliothek wie 'marked' oder 'react-markdown' ersetzt werden)
-    const renderMessageContent = (content: string) => {
-        // Beispiel: Emojis durch Unicode ersetzen (nur ein kleiner Ausschnitt)
-        const emojiMap: Record<string, string> = {
-            ":)": "😊",
-            ":(": "😞",
-            ":D": "😄",
-            "<3": "❤️",
-        };
-        let rendered = content;
-        Object.entries(emojiMap).forEach(([k, v]) => {
-            rendered = rendered.split(k).join(v);
-        });
-
-        // Markdown ersetzen (fett und kursiv)
-        rendered = rendered
-            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // **fett**
-            .replace(/\*(.*?)\*/g, "<em>$1</em>"); // *kursiv*
-
-        // Rendern als React-Element mit dangerouslySetInnerHTML (Achtung: hier keine Sicherheit gegen XSS)
-        return <div dangerouslySetInnerHTML={{ __html: rendered }} />;
-    };
+    if (loadingMessages) {
+        return (
+            <div className="h-full flex items-center justify-center text-marktx-gray-400 p-4">
+                <p>Nachrichten werden geladen...</p>
+            </div>
+        );
+    }
+    if (error) {
+        return (
+            <div className="h-full flex items-center justify-center text-red-600 p-4">
+                <p>{error}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full">
-            {/* Header mit Avatar und Online-Status */}
+            {/* Header */}
             <div className="border-b p-3 flex items-center bg-white">
                 <Avatar className="h-10 w-10 mr-3">
-                    <AvatarImage src={chatPartner.avatar} alt={chatPartner.name} />
-                    <AvatarFallback className="bg-marktx-blue-200 text-marktx-blue-700">
-                        {chatPartner.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
+                    {chatPartner.avatar ? (
+                        <AvatarImage src={chatPartner.avatar} alt={chatPartner.name} />
+                    ) : (
+                        <AvatarFallback className="bg-marktx-blue-200 text-marktx-blue-700">
+                            {chatPartner.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                    )}
                 </Avatar>
                 <div>
                     <div className="font-medium">{chatPartner.name}</div>
@@ -211,13 +200,8 @@ const ChatComponent = ({ chatId, userId, chatPartner }: ChatComponentProps) => {
 
             {/* Nachrichtenbereich */}
             <div className="flex-1 overflow-y-auto p-4 bg-marktx-gray-50">
-                {/* Ladeanzeige, falls Nachrichten laden */}
-                {loadingMessages ? (
-                    <div className="h-full flex items-center justify-center text-marktx-gray-400 text-center p-4">
-                        <p>Nachrichten werden geladen...</p>
-                    </div>
-                ) : messages.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-marktx-gray-400 text-center p-4">
+                {messages.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-marktx-gray-400 p-4 text-center">
                         <p>Beginne die Konversation mit {chatPartner.name}.</p>
                     </div>
                 ) : (
@@ -236,8 +220,14 @@ const ChatComponent = ({ chatId, userId, chatPartner }: ChatComponentProps) => {
                                             : "bg-white border border-marktx-gray-200 hover:bg-marktx-gray-100"
                                     }`}
                                 >
-                                    {/* Nachricht mit Markdown und Emoji gerendert */}
-                                    {renderMessageContent(message.content)}
+                                    {/* Markdown & Emoji Support via react-markdown (sicher mit rehype-sanitize) */}
+                                    <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                                        {message.content
+                                            .replace(/:\)/g, "😊")
+                                            .replace(/:\(/g, "😞")
+                                            .replace(/:D/g, "😄")
+                                            .replace(/<3/g, "❤️")}
+                                    </ReactMarkdown>
 
                                     {/* Zeitstempel */}
                                     <div
@@ -252,7 +242,6 @@ const ChatComponent = ({ chatId, userId, chatPartner }: ChatComponentProps) => {
                                 </div>
                             </div>
                         ))}
-                        {/* Referenz zum automatischen Scrollen */}
                         <div ref={messagesEndRef} />
                     </div>
                 )}
@@ -267,9 +256,13 @@ const ChatComponent = ({ chatId, userId, chatPartner }: ChatComponentProps) => {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                         className="flex-grow"
-                        disabled={sendingMessage} // Button & Input beim Senden deaktivieren
+                        disabled={sendingMessage}
                     />
-                    <Button onClick={sendMessage} className="btn-primary" disabled={sendingMessage}>
+                    <Button
+                        onClick={sendMessage}
+                        className="btn-primary"
+                        disabled={sendingMessage}
+                    >
                         <Send size={18} />
                     </Button>
                 </div>

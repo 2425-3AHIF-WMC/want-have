@@ -5,7 +5,29 @@ import {authenticateJWT} from "../middleware/auth";
 import { Request, Response } from 'express';
 
 export const messageRouter = Router();
-
+messageRouter.get("/hasNewMessages", authenticateJWT, async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    try {
+        // Beispiel‐Query: Gibt true zurück, wenn mindestens eine Nachricht für userId ist, die noch nicht gelesen:
+        // Du musst hier anpassen, je nachdem, wie deine DB das „Gelesen/ungelesen“ regelt.
+        const result = await pool.query(
+            `
+      SELECT COUNT(*) AS cnt
+      FROM message
+      WHERE recipient_id = $1
+        AND is_read = false
+      `,
+            [userId]
+        );
+        const count = parseInt(result.rows[0].cnt, 10);
+        res.status(StatusCodes.OK).json({ hasNew: count > 0 });
+        return;
+    } catch (err) {
+        console.error("Fehler beim Prüfen von ungelesenen Nachrichten:", err);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Database error" });
+        return;
+    }
+});
 messageRouter.post('/:chatId', authenticateJWT, async (req: Request, res: Response) => {
     const { content } = req.body;
     const { chatId } = req.params;

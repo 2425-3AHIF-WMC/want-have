@@ -1,12 +1,11 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "./Navbar";
-import Footer from "./Footer";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Label } from "./ui/label";
-
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Label } from "../components/ui/label";
 import {
     Select,
     SelectContent,
@@ -14,16 +13,19 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue
-} from "./ui/select";
+} from "../components/ui/select";
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
-    CardTitle
-} from "./ui/card";
-import { Upload, X, Image } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";  // Supabase-Client importieren
+    CardTitle,
+    CardDescription
+} from "../components/ui/card";
+import { Upload, X } from "lucide-react";
+import { supabase } from "../lib/supabaseClient";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
+import { toast } from "sonner";
 
 const categories = [
     "Schulbücher",
@@ -42,20 +44,24 @@ const conditions = [
     "Gebraucht"
 ];
 
-const CreateListing = () => {
+const CreateListing: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [price, setPrice] = useState("");
-    const [category, setCategory] = useState(categories[0]);  // Standard vorausgewählt
-    const [condition, setCondition] = useState(conditions[0]); // Standard vorausgewählt
+    const [price, setPrice] = useState<number | "">("");
+    const [category, setCategory] = useState<string>(categories[0]);
+    const [condition, setCondition] = useState<string>(conditions[0]);
     const [isFree, setIsFree] = useState(false);
     const [negotiable, setNegotiable] = useState(false);
+
     const [images, setImages] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState<number[]>([]); // Fortschritt pro Bild
+    const [uploadProgress, setUploadProgress] = useState<number[]>([]);
+
+    const [error, setError] = useState<string | null>(null);
 
     const MAX_TITLE_LENGTH = 100;
     const MIN_TITLE_LENGTH = 5;
@@ -64,45 +70,49 @@ const CreateListing = () => {
     const MAX_IMAGE_SIZE_MB = 5;
     const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
+    // Datei-Auswahl
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
 
             if (images.length + selectedFiles.length > 5) {
-                alert("Du kannst maximal 5 Bilder hochladen!");
+                toast.error("Du kannst maximal 5 Bilder hochladen!");
                 return;
             }
 
-            // Check file size limit per Bild
             for (const file of selectedFiles) {
                 if (file.size > MAX_IMAGE_SIZE_BYTES) {
-                    alert(`Das Bild "${file.name}" ist größer als ${MAX_IMAGE_SIZE_MB} MB und kann nicht hochgeladen werden.`);
+                    toast.error(`Das Bild "${file.name}" ist größer als ${MAX_IMAGE_SIZE_MB} MB.`);
                     return;
                 }
             }
 
-            setImages([...images, ...selectedFiles]);
-
-            // Erzeuge Preview-URLs für die Bilder
-            const newPreviewUrls = selectedFiles.map(file => URL.createObjectURL(file));
-            setPreviewUrls([...previewUrls, ...newPreviewUrls]);
+            setImages((prev) => [...prev, ...selectedFiles]);
+            const newPreviewUrls = selectedFiles.map((file) =>
+                URL.createObjectURL(file)
+            );
+            setPreviewUrls((prev) => [...prev, ...newPreviewUrls]);
         }
     };
 
+    // Bild entfernen
     const removeImage = (index: number) => {
-        const newImages = [...images];
-        newImages.splice(index, 1);
-        setImages(newImages);
-
-        const newPreviewUrls = [...previewUrls];
-        URL.revokeObjectURL(newPreviewUrls[index]);
-        newPreviewUrls.splice(index, 1);
-        setPreviewUrls(newPreviewUrls);
-
-        // Upload-Fortschritt anpassen
-        const newProgress = [...uploadProgress];
-        newProgress.splice(index, 1);
-        setUploadProgress(newProgress);
+        setImages((prev) => {
+            const tmp = [...prev];
+            tmp.splice(index, 1);
+            return tmp;
+        });
+        setPreviewUrls((prev) => {
+            URL.revokeObjectURL(prev[index]);
+            const tmp = [...prev];
+            tmp.splice(index, 1);
+            return tmp;
+        });
+        setUploadProgress((prev) => {
+            const tmp = [...prev];
+            tmp.splice(index, 1);
+            return tmp;
+        });
     };
 
     const handleFreeChange = (checked: boolean) => {
@@ -113,7 +123,7 @@ const CreateListing = () => {
         }
     };
 
-    // Bilder mit Fortschritt hochladen
+    // Bilder zu Supabase hochladen (ohne echten Fortschritt, nur 0–100%)
     const uploadImages = async (): Promise<string[]> => {
         const uploadedUrls: string[] = [];
         setUploadProgress(new Array(images.length).fill(0));
@@ -124,27 +134,21 @@ const CreateListing = () => {
             const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
             const filePath = `listings/${fileName}`;
 
-            // Supabase Storage Upload mit Fortschritt ist nicht direkt supported, Workaround: (hier nur Simulation)
-            // Für echte Fortschrittsanzeige müsste man z.B. XMLHttpRequest nutzen oder supabase Storage SDK updaten
-
-            // Einfach Upload starten
             const { data, error } = await supabase.storage
                 .from("listings")
                 .upload(filePath, image);
 
             if (error) {
-                alert("Fehler beim Hochladen der Bilder: " + error.message);
+                toast.error("Fehler beim Hochladen der Bilder: " + error.message);
                 throw error;
             }
 
-            // Fortschritt auf 100% setzen für dieses Bild
-            setUploadProgress(prev => {
-                const copy = [...prev];
-                copy[i] = 100;
-                return copy;
+            setUploadProgress((prev) => {
+                const tmp = [...prev];
+                tmp[i] = 100;
+                return tmp;
             });
 
-            // Öffentliche URL generieren
             const { data: urlData } = supabase.storage
                 .from("listings")
                 .getPublicUrl(filePath);
@@ -155,63 +159,75 @@ const CreateListing = () => {
         return uploadedUrls;
     };
 
-
+    // Formular absenden
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
 
-        // Validierung: Titel-Länge
+        if (!user) {
+            setError("Du musst eingeloggt sein, um eine Anzeige zu erstellen.");
+            return;
+        }
+
         if (!title || title.length < MIN_TITLE_LENGTH || title.length > MAX_TITLE_LENGTH) {
-            alert(`Titel muss zwischen ${MIN_TITLE_LENGTH} und ${MAX_TITLE_LENGTH} Zeichen lang sein!`);
+            setError(`Titel muss zwischen ${MIN_TITLE_LENGTH} und ${MAX_TITLE_LENGTH} Zeichen lang sein.`);
             return;
         }
-
-        // Validierung: Beschreibung-Länge
-        if (!description || description.length < MIN_DESC_LENGTH || description.length > MAX_DESC_LENGTH) {
-            alert(`Beschreibung muss zwischen ${MIN_DESC_LENGTH} und ${MAX_DESC_LENGTH} Zeichen lang sein!`);
+        if (
+            !description ||
+            description.length < MIN_DESC_LENGTH ||
+            description.length > MAX_DESC_LENGTH
+        ) {
+            setError(`Beschreibung muss zwischen ${MIN_DESC_LENGTH} und ${MAX_DESC_LENGTH} Zeichen lang sein.`);
             return;
         }
-
         if (!category || !condition) {
-            alert("Bitte wähle Kategorie und Zustand aus!");
+            setError("Bitte wähle Kategorie und Zustand aus.");
             return;
         }
-
-        if (!isFree && (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0)) {
-            alert("Bitte gib einen gültigen Preis ein!");
-            return;
+        if (!isFree) {
+            if (price === "" || isNaN(Number(price))) {
+                setError("Bitte gib einen gültigen Preis ein.");
+                return;
+            }
+            if (Number(price) <= 0) {
+                setError("Preis muss größer als 0 sein.");
+                return;
+            }
         }
-
         if (images.length === 0) {
-            alert("Bitte füge mindestens ein Bild hinzu!");
+            setError("Bitte füge mindestens ein Bild hinzu.");
             return;
         }
 
         setIsUploading(true);
 
         try {
-            // Bilder hochladen und URLs erhalten
             const imageUrls = await uploadImages();
 
-            // Hier kannst du die Daten inkl. imageUrls an dein Backend oder API schicken
-            console.log({
+            // -------------- API-Call an Backend --------------
+            const payload = {
                 title,
                 description,
-                price: isFree ? 0 : parseFloat(price),
+                price: isFree ? 0 : Number(price),
                 category,
                 condition,
-                isFree,
-                negotiable,
-                images: imageUrls,
-            });
+                is_free: isFree,
+                negotiable: isFree ? false : negotiable,
+                image_urls: imageUrls
+            };
 
-            // Rückgängig machen der Objekt-URLs
-            previewUrls.forEach(url => URL.revokeObjectURL(url));
+            const res = await axios.post(
+                `${process.env.REACT_APP_API_URL}/ads`,
+                payload,
+                { withCredentials: true }
+            );
 
-            alert("Anzeige erfolgreich erstellt!");
+            toast.success("Anzeige erfolgreich erstellt!");
             navigate("/");
-        } catch (error) {
-            console.error("Upload fehlgeschlagen", error);
-            alert("Der Upload ist fehlgeschlagen. Bitte versuche es erneut.");
+        } catch (err: any) {
+            console.error("Upload fehlgeschlagen", err);
+            toast.error("Der Upload ist fehlgeschlagen. Bitte versuche es erneut.");
         } finally {
             setIsUploading(false);
         }
@@ -231,6 +247,11 @@ const CreateListing = () => {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
+                            {error && (
+                                <div className="bg-red-100 text-red-700 p-2 rounded mb-4">
+                                    {error}
+                                </div>
+                            )}
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Titel */}
                                 <div className="space-y-2">
@@ -270,8 +291,7 @@ const CreateListing = () => {
                                 {/* Bilder */}
                                 <div className="space-y-2">
                                     <Label htmlFor="images">Bilder *</Label>
-                                    <div
-                                        className="border-2 border-dashed border-marktx-gray-300 rounded-lg p-6 text-center">
+                                    <div className="border-2 border-dashed border-marktx-gray-300 rounded-lg p-6 text-center">
                                         <div className="mb-4 flex flex-wrap gap-3 justify-center">
                                             {previewUrls.map((url, index) => (
                                                 <div key={index} className="relative w-24 h-24">
@@ -285,9 +305,8 @@ const CreateListing = () => {
                                                         className="absolute -top-2 -right-2 bg-marktx-accent-red text-white rounded-full p-1"
                                                         onClick={() => removeImage(index)}
                                                     >
-                                                        <X size={14}/>
+                                                        <X size={14} />
                                                     </button>
-                                                    {/* Fortschrittsanzeige als Overlay */}
                                                     {isUploading && (
                                                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-md overflow-hidden">
                                                             <div
@@ -328,9 +347,8 @@ const CreateListing = () => {
                                 <div>
                                     <Label htmlFor="category">Kategorie *</Label>
                                     <Select
-                                        onValueChange={(value) => setCategory(value)}
-                                        defaultValue={categories[0]}
                                         value={category}
+                                        onValueChange={(value) => setCategory(value)}
                                     >
                                         <SelectTrigger id="category" className="w-full">
                                             <SelectValue placeholder="Kategorie auswählen" />
@@ -351,9 +369,8 @@ const CreateListing = () => {
                                 <div>
                                     <Label htmlFor="condition">Zustand *</Label>
                                     <Select
-                                        onValueChange={(value) => setCondition(value)}
-                                        defaultValue={conditions[0]}
                                         value={condition}
+                                        onValueChange={(value) => setCondition(value)}
                                     >
                                         <SelectTrigger id="condition" className="w-full">
                                             <SelectValue placeholder="Zustand auswählen" />
@@ -379,7 +396,7 @@ const CreateListing = () => {
                                         min="0"
                                         step="0.01"
                                         value={price}
-                                        onChange={(e) => setPrice(e.target.value)}
+                                        onChange={(e) => setPrice(e.target.value === "" ? "" : Number(e.target.value))}
                                         placeholder="Preis eingeben"
                                         disabled={isFree}
                                         required={!isFree}

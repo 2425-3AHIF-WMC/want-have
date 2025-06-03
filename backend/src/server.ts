@@ -1,64 +1,176 @@
 import express from 'express';
-import {userRouter} from "./routes/userRouter";
-import {adRouter} from "./routes/adRouter";
-import {chatRouter} from "./routes/chatRouter";
-import {messageRouter} from "./routes/messageRouter";
+import { userRouter } from "./routes/userRouter";
+import { adRouter } from "./routes/adRouter";
+import { chatRouter } from "./routes/chatRouter";
+import { messageRouter } from "./routes/messageRouter";
+import { reportRouter } from "./routes/reportRouter";
+import { loginRouter } from "./routes/loginRouter";
+import { purchaseRequestRouter } from "./routes/purchaseRequestRouter";
+import { recommendationRouter } from "./routes/recommendationRouter";
+
 import http from "http";
 import { Server } from "socket.io";
-import {createClient, SupabaseClient} from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import pool from "./db/pool";
-import { reportRouter } from "./routes/reportRouter";
 import cors from "cors";
-import {keycloak, sessionMiddleware} from "./middleware/keycloak";
-import {loginRouter} from "./routes/loginRouter";
-import {purchaseRequestRouter} from "./routes/purchaseRequestRouter";
-import dotenv from 'dotenv';
-import {recommendationRouter} from "./routes/recommendationRouter";
-import {initSocket} from "../socket/broadcast";
 import fileUpload, { UploadedFile } from "express-fileupload";
 import path from "path";
 import fs from "fs";
-import { PostgrestSingleResponse } from '@supabase/supabase-js';
-
-
+import dotenv from 'dotenv';
+import { keycloak, sessionMiddleware } from "./middleware/keycloak";
+import { authenticateJWT } from "./middleware/auth";
+import {initSocket} from "../socket/broadcast";
+import {notificationRouter} from "./routes/notificationRouter";
 
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
-
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('SUPABASE_URL or SUPABASE_KEY is not defined');
+    throw new Error('SUPABASE_URL oder SUPABASE_KEY ist nicht definiert');
 }
 
 const app = express();
 const port = process.env.PORT || 3000;
+
 let supabase: SupabaseClient;
+supabase = createClient(supabaseUrl, supabaseKey);
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
+        origin: process.env.CLIENT_URL ?? "*",
+        methods: ["GET", "POST", "DELETE", "PATCH"]
     }
 });
-app.use(fileUpload()) // Aktiviert Dateiupload
+
+app.use(fileUpload());           // Dateiupload aktivieren
 app.use(express.json());
-app.use(cors());
+app.use(cors({                   // Nur erlaubte Ursprünge (z.B. Frontend-Domain)
+    origin: process.env.CLIENT_URL ?? "*",
+    credentials: true
+}));
 app.use(sessionMiddleware);
 app.use(keycloak.middleware({ logout: "/logout" }));
-app.post("/upload", function (req, res) {
-    if (!req.files || !req.files.datei) {
-        res.status(400).send("Keine Datei hochgeladen");
-        return;
+
+app.post("/upload", authenticateJWT, (req, res) => {
+        if (!req.files || !req.files.datei) {
+            res.status(400).send("Keine Datei hochgeladen");
+            return;
+        }
+
+        const datei = req.files.datei as UploadedFile;
+        // Pfad-Traversal verhindern:
+        const safeName = path.basename(datei.name);
+        const uploadDir = path.join(__dirname, "uploads");
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const pfad = path.join(uploadDir, `${Date.now()}-${safeName}`);
+
+        try {
+            fs.writeFileSync(pfad, datei.data);
+            res.status(201).json({ message: "Datei gespeichert", filename: path.basename(pfad) });
+            return;
+        } catch (err) {
+            console.error("Fehler beim Datei-Upload:", err);
+            res.status(500).json({ error: "Interner Serverfehler beim Speichern der Datei" });
+            return;
+        }
     }
+);
 
-    const datei = req.files.datei as UploadedFile;
+initSocket(io);
 
-    const pfad = path.join(__dirname, "uploads", datei.name);
+io.on("connection", (socket) => {
+    console.log("🔌 Socket verbunden:", socket.id);
 
-    fs.writeFileSync(pfad, datei.data);
+    socket.on("user-online", (userId: string) => {
+        // userId → socket.id im Map speichern
+        const onlineUsers: Map<string, string> = (global as any).onlineUsers || new Map();
+        onlineUsers.set(userId, socket.id);
+        (global as any).onlineUsers = onlineUsers;
+        console.log(`✅ ${userId} ist online`);
+        io.emit("user-status", { userId, status: "online" });
+    });
 
-    res.send("Datei gespeichert als: " + datei.name);
+    socket.on("join-chat", (chatId: string) => {
+        console.log(`User ${socket.id} tritt Chat ${chatId} bei`);
+
+        // Vorherigen Supabase-Channel abschließen, falls vorhanden
+        if (socket.data.supabaseChannel) {
+            supabase.removeChannel(socket.data.supabaseChannel);
+            delete socket.data.supabaseChannel;
+        }
+
+        socket.join(chatId);
+
+        const channel = supabase
+            .channel(`chat-${chatId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `chat_id=eq.${chatId}`
+                },
+                (payload) => {
+                    console.log("Neue Nachricht in Chat", chatId, payload.new);
+                    io.to(chatId).emit("new-message", payload.new);
+                }
+            )
+            .subscribe();
+
+        socket.data.supabaseChannel = channel;
+    });
+
+    socket.on("leave-chat", (chatId: string) => {
+        console.log(`User ${socket.id} verlässt Chat ${chatId}`);
+        socket.leave(chatId);
+        if (socket.data.supabaseChannel) {
+            supabase.removeChannel(socket.data.supabaseChannel);
+            delete socket.data.supabaseChannel;
+        }
+    });
+
+    socket.on("disconnect", async () => {
+        console.log("❌ Socket getrennt:", socket.id);
+        const onlineUsers: Map<string, string> = (global as any).onlineUsers;
+        if (onlineUsers) {
+            for (const [userId, sId] of onlineUsers.entries()) {
+                if (sId === socket.id) {
+                    onlineUsers.delete(userId);
+                    console.log(`❌ ${userId} ist offline`);
+                    io.emit("user-status", { userId, status: "offline" });
+                    break;
+                }
+            }
+        }
+        if (socket.data.supabaseChannel) {
+            await supabase.removeChannel(socket.data.supabaseChannel).catch(err => {
+                console.error("Fehler beim Entfernen des Supabase-Kanals:", err);
+            });
+            delete socket.data.supabaseChannel;
+        }
+    });
+
+    socket.on("send-message", async (data) => {
+        const { chatId, senderId, content } = data;
+        if (!chatId || !senderId || !content) {
+            console.error("Ungültige Nachrichtendaten:", data);
+            return;
+        }
+
+        try {
+            await pool.query(
+                "INSERT INTO messages (chat_id, sender_id, content) VALUES ($1, $2, $3)",
+                [chatId, senderId, content]
+            );
+        } catch (err) {
+            console.error("Fehler beim Einfügen der Nachricht:", err);
+        }
+    });
 });
 
 app.use('/users', userRouter);
@@ -69,153 +181,40 @@ app.use('/reports', reportRouter);
 app.use('/auth', loginRouter);
 app.use('/requests', purchaseRequestRouter);
 app.use('/recommendations', recommendationRouter);
-
-if (process.env.SUPABASE_KEY && process.env.SUPABASE_URL) {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-} else {
-    throw new Error("undefined anon key");
-}
-const onlineUsers = new Map<string, string>(); // userId → socketId
-initSocket(io);
-
-io.on("connection", (socket) => {
-
-    console.log("A user connected");
-
-    socket.on("user-online", (userId: string) => {
-        onlineUsers.set(userId, socket.id);
-        console.log(`✅ ${userId} ist online`);
-        io.emit("user-status", { userId, status: "online" });
-    });
-
-    socket.on("disconnect", async () => {
-        for (const [userId, id] of onlineUsers.entries()) {
-            if (id === socket.id) {
-                onlineUsers.delete(userId);
-                console.log(`❌ ${userId} ist offline`);
-                io.emit("user-status", { userId, status: "offline" });
-                break;
-            }
-        }
-
-        if (socket.data.supabaseChannel) {
-            try {
-                const result = await supabase.removeChannel(socket.data.supabaseChannel);
-                console.log("Channel removed:", result);
-            } catch (err) {
-                console.error("Failed to remove channel:", err);
-            }
-        }
-    });
+app.use("/notifications", notificationRouter);
 
 
-    socket.on("join-chat", (chatId: string) => {
-        console.log(`User joined chat ${chatId}`);
-        socket.join(chatId);
-
-        const channel = supabase.channel(`chat-${chatId}`);
-
-        channel
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages',
-                    filter: `chat_id=eq.${chatId}`
-                },
-                (payload) => {
-                    console.log("New message for chat", chatId, payload.new);
-                    io.to(chatId).emit("new-message", payload.new);
-                }
-            )
-            .subscribe();
-
-        socket.data.supabaseChannel = channel;
-    });
-
-
-    socket.on("send-message", async (data) => {
-        const { chatId, senderId, content } = data;
-
-        if (!chatId || !senderId || !content) {
-            console.error("Invalid message data");
-            return;
-        }
+app.delete('/api/products/:id', authenticateJWT, async (req, res) => {
+        const productId = req.params.id;
+        const userId = req.user!.id; // aus dem JWT
 
         try {
-            await pool.query(
-                "INSERT INTO messages (chat_id, sender_id, content) VALUES ($1, $2, $3)",
-                [chatId, senderId, content]
+            // 1) Besitzer-ID abfragen
+            const { rows } = await pool.query(
+                'SELECT owner_id FROM ad WHERE id = $1',
+                [productId]
             );
+            if (rows.length === 0) {
+                res.status(404).json({ error: 'Anzeige nicht gefunden' });
+                return;
+            }
+            const ownerId = rows[0].owner_id;
+            if (ownerId !== userId) {
+                res.status(403).json({ error: 'Nicht berechtigt, diese Anzeige zu löschen' });
+                return;
+            }
+
+            await pool.query('DELETE FROM ad WHERE id = $1', [productId]);
+            res.status(200).json({ success: true, message: 'Anzeige gelöscht' });
         } catch (err) {
-            console.error("Failed to insert message:", err);
+            console.error('Fehler beim Löschen der Anzeige:', err);
+            res.status(500).json({ error: 'Interner Serverfehler' });
+            return;
         }
-    });
-});
-app.post('/purchase-request/:adId', async (req, res) => {
-    const adId = req.params.adId;
-    const buyerId = req.body.buyerId;
-
-    // 1. Anzeige abrufen, um Verkäufer herauszufinden
-    const adResult = await supabase
-        .from('ad')
-        .select('user_id, title')
-        .eq('id', adId)
-        .single();
-
-    if (adResult.error || !adResult.data) {
-        res.status(404).send({ error: "Anzeige nicht gefunden" });
-        return;
     }
+);
 
-    const sellerId = adResult.data.user_id;
-    const adTitle = adResult.data.title;
-
-
-    // 2. Eintrag in purchase_request
-    const purchaseInsert = await supabase
-        .from('purchase_request')
-        .insert([{
-            buyer_id: buyerId,
-            ad_id: adId,
-            seller_id: sellerId
-        }])
-        .select()
-        .single();
-
-    // 3. Benachrichtigung für Verkäufer
-    await supabase
-        .from('notification')
-        .insert([{
-            user_id: sellerId,
-            type: 'purchase_request',
-            related_id: purchaseInsert.data.id,
-            message: `Du hast eine Anfrage für deine Anzeige "${adTitle}" erhalten.`,
-        }]);
-
-    res.send({ success: true });
-});
-app.delete('/api/products/:id', async (req, res) => {
-    const productId = req.params.id;
-
-    // Optional nur seine eigene Anzeige löschen kann
-
-    const { error } = await supabase
-        .from('ad')
-        .delete()
-        .eq('id', productId);
-
-    if (error) {
-        console.error('Fehler beim Löschen:', error);
-        res.status(500).send({ error: 'Löschen fehlgeschlagen' });
-        return;
-    }
-
-    res.send({ success: true, message: 'Anzeige gelöscht' });
-});
-
-
+// Server starten
 server.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    console.log(`🚀 Server läuft auf Port ${port}`);
 });

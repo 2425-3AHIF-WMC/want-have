@@ -1,15 +1,21 @@
 import { Router } from "express";
 import { protect, KeycloakRequest } from "../middleware/keycloak";
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 
 export const loginRouter = Router();
 
-// Public route
-loginRouter.get("/", (req: Request, res: Response) => {
+// Public route: Test‐Endpunkt
+loginRouter.get("/", (_req: Request, res: Response) => {
     res.send("Hello from the public login router");
 });
 
-// Protected route
+// Login‐Start: Keycloak übernimmt Redirect
+loginRouter.get("/login", (req: Request, res: Response) => {
+    // Keycloak Middleware leitet automatisch weiter
+    (req as any).kauth.login();
+});
+
+// Protected route: eigene User‐Daten
 loginRouter.get("/me", protect(), (req: Request, res: Response) => {
     const kreq = req as KeycloakRequest;
     const userInfo = kreq.kauth.grant.access_token.content;
@@ -21,7 +27,7 @@ loginRouter.get("/me", protect(), (req: Request, res: Response) => {
     });
 });
 
-// Logout (handled via Keycloak)
+// Logout: Keycloak‐Abmeldung
 loginRouter.get("/logout", protect(), (req: Request, res: Response) => {
     (req as any).kauth.logout();
     res.redirect("/");

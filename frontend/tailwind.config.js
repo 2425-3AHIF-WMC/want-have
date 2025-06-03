@@ -1,23 +1,35 @@
+// ───────────────────────────────────────────────────────────────────────────────
+// Datei: tailwind.config.js
+// ───────────────────────────────────────────────────────────────────────────────
+
 module.exports = {
   content: [
-    "./src/**/*.{js,ts,jsx,tsx}", // ← ensure your src folder is included
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
+        // Grundsätzliches Grau–Beige‐Farbschema:
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+
+        // Statt „marktx-blue-600“ und „marktx-blue-700“ nehmen wir Beige–Grau:
         marktx: {
           blue: {
-            600: "#2563eb", // Choose your actual blue-600 color hex
-            700: "#1d4ed8", // Choose your actual blue-700 color hex
+            // Neu: Light‐Beige als Haupt‐Farbe
+            600: "#d6c8b7",   // Helles Beige
+            700: "#b8a694",   // Etwas dunkleres Beige
           },
+          // Accent (z. B. Buttons/Hover) in warmem Grau
           accent: {
-            orange: "#f97316", // Example accent color
-            red: "#ef4444",    // Example accent hover color
+            orange: "#a39e93", // Gedämpftes Grau‐Beige
+            red: "#817e79",    // Dunkleres Warmgrau
           },
-          free: "#10b981", // Example "free" badge color
+          // „free“-Badge‐Farbe in zurückhaltendem Grün‐Beige
+          free: "#8fa79e",
         },
+
+        // Alle anderen Farben belassen wir auf den CSS‐Variablen (siehe weiter unten)
         card: "hsl(var(--card))",
         "card-foreground": "hsl(var(--card-foreground))",
         popover: "hsl(var(--popover))",
@@ -35,7 +47,7 @@ module.exports = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        // Sidebar colors
+        // Sidebar‐Farben bleiben in CSS‐Variablen
         "sidebar-background": "hsl(var(--sidebar-background))",
         "sidebar-foreground": "hsl(var(--sidebar-foreground))",
         "sidebar-primary": "hsl(var(--sidebar-primary))",

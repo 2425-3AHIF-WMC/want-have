@@ -1,6 +1,9 @@
+// Dateipfad: src/pages/Report.tsx
 import React, { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
 const categories = [
     "Unangemessene Inhalte",
@@ -11,75 +14,87 @@ const categories = [
     "Sonstiges",
 ];
 
-const Report = () => {
-    const [username, setUsername] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
+const Report: React.FC = () => {
+    const { user } = useAuth();
+    const [reason, setReason] = useState("");            // statt username → reason
     const [description, setDescription] = useState("");
     const [submitted, setSubmitted] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMsg(null);
 
-        const reportData = {
-            username,
-            category: selectedCategory,
-            description,
-        };
+        if (!user) {
+            setErrorMsg("Du musst eingeloggt sein, um eine Meldung abzuschicken.");
+            return;
+        }
+
+        if (!reason) {
+            setErrorMsg("Bitte wähle eine Kategorie (Reason) aus.");
+            return;
+        }
 
         try {
-            const response = await fetch("/api/report", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
+            // JWT-Cookie (HttpOnly) wird automatisch mitsamt axios-Request gesendet
+            const response = await axios.post(
+                `${process.env.REACT_APP_API_URL}/reports/general`,
+                {
+                    reason,            // Backend erwartet "reason"
+                    description,       // Backend erwartet "description"
                 },
-                body: JSON.stringify(reportData),
-            });
+                {
+                    withCredentials: true,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
-            if (response.ok) {
+            if (response.status === 201) {
                 setSubmitted(true);
             } else {
-                alert("Fehler beim Absenden der Meldung");
+                setErrorMsg("Fehler beim Absenden der Meldung.");
             }
-        } catch (error) {
-            console.error("Fehler beim Senden:", error);
-            alert("Verbindung zum Server fehlgeschlagen");
+        } catch (err: any) {
+            console.error("Fehler beim Senden:", err);
+            const serverMsg = err.response?.data?.error || "Serverfehler";
+            setErrorMsg("Verbindung fehlgeschlagen: " + serverMsg);
         }
     };
-
 
     return (
         <>
             <Navbar />
+
             <main className="marktx-container py-8 min-h-[60vh]">
                 <h1 className="text-2xl font-bold mb-6">🚨 Missbrauch melden</h1>
 
-                {!submitted ? (
+                {!user ? (
+                    <div className="text-red-600">Bitte melde dich erst an, um einen Bericht zu erstellen.</div>
+                ) : submitted ? (
+                    <div className="text-green-600 font-semibold">
+                        <p className="mb-2">✅ Vielen Dank für deine Meldung!</p>
+                        <p>Unser Team wird den Vorfall prüfen und bei Bedarf entsprechende Maßnahmen ergreifen.</p>
+                    </div>
+                ) : (
                     <form onSubmit={handleSubmit} className="max-w-lg">
+                        {errorMsg && (
+                            <div className="bg-red-100 text-red-700 p-2 mb-4 rounded">{errorMsg}</div>
+                        )}
+
                         <p className="text-gray-600 mb-4">
-                            Bitte fülle das folgende Formular aus, wenn du einen Missbrauch oder Regelverstoß melden möchtest. Deine Meldung bleibt anonym und wird vertraulich behandelt.
+                            Bitte wähle eine Kategorie und beschreibe den Vorfall. Deine Meldung bleibt anonym.
                         </p>
 
-                        <label htmlFor="username" className="block font-semibold mb-1">
-                            Gemeldeter Benutzername
-                        </label>
-                        <input
-                            id="username"
-                            type="text"
-                            className="w-full mb-4 p-2 border border-gray-300 rounded"
-                            placeholder="z. B. max.mustermann@htl-leonding.at"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-
-                        <label htmlFor="category" className="block font-semibold mb-1">
+                        <label htmlFor="reason" className="block font-semibold mb-1">
                             Kategorie des Vorfalls
                         </label>
                         <select
-                            id="category"
+                            id="reason"
                             className="w-full mb-4 p-2 border border-gray-300 rounded"
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
                             required
                         >
                             <option value="" disabled>
@@ -112,15 +127,9 @@ const Report = () => {
                             Meldung absenden
                         </button>
                     </form>
-                ) : (
-                    <div className="text-green-600 font-semibold">
-                        <p className="mb-2">✅ Vielen Dank für deine Meldung!</p>
-                        <p>
-                            Unser Team wird den Vorfall prüfen und bei Bedarf entsprechende Maßnahmen ergreifen.
-                        </p>
-                    </div>
                 )}
             </main>
+
             <Footer />
         </>
     );

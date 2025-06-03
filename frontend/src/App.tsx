@@ -23,15 +23,12 @@ import { Toaster } from "sonner";
 
 import "./index.css";
 import MessagesList from "./components/MessagesList";
-import ProfilePage from "./pages/LoginPage";
-import {ReactKeycloakProvider} from "@react-keycloak/web";
-import {keycloak} from "./services/keycloak";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
 const App = () => (
     <QueryClientProvider client={queryClient}>
-        <ReactKeycloakProvider authClient={keycloak} initOptions={{ onLoad: "check-sso" }}>
         <AuthProvider>
         <TooltipProvider>
             <Toaster />
@@ -45,9 +42,10 @@ const App = () => (
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/report" element={<Report />} />
                     <Route path="/messages" element={<MessagesList />} />
+                    <Route path="/notifications" element={<Notifications />} />
                     <Route path="/chats/:chatId/partner" element={<PartnerComponent />} />
                     <Route path="*" element={<Navigate to="/" />} />
-                    <Route path="/profile" element={<ProfilePage />} />
+
                     <Route path="/chat/:chatId" element={<ChatComponent
                         chatId={""} // Hier solltest du die chatId aus den URL-Parametern holen
                         userId={"currentUserId"} // Aktuelle Benutzer-ID aus deinem Auth-System
@@ -62,7 +60,6 @@ const App = () => (
             </BrowserRouter>
         </TooltipProvider>
         </AuthProvider>
-        </ReactKeycloakProvider>
     </QueryClientProvider>
 );
 

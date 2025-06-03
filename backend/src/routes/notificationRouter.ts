@@ -1,61 +1,75 @@
-import { Router, Request, Response } from "express";
-import pool from '../db/pool';
+// ───────────────────────────────────────────────────────────────────────────────
+// Datei: routes/notificationRouter.ts
+// ───────────────────────────────────────────────────────────────────────────────
+
+import { Router } from "express";
+import pool from "../db/pool";
 import { StatusCodes } from "http-status-codes";
 import { authenticateJWT } from "../middleware/auth";
+import { Request, Response } from "express";
 
 export const notificationRouter = Router();
 
-// Alle Notifications für eingeloggten User holen
-notificationRouter.get('/', authenticateJWT, async (req: Request, res: Response) => {
+// ───────────────────────────────────────────────────────────────────────────────
+// GET /notifications?onlyUnseen=true
+// Liefert alle Notifications oder nur ungelesene (onlyUnseen=true)
+// ───────────────────────────────────────────────────────────────────────────────
+notificationRouter.get("/", authenticateJWT, async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const onlyUnseen = req.query.onlyUnseen === "true";
 
     try {
-        const result = await pool.query(
-            `SELECT * FROM notification WHERE user_id = $1 ORDER BY created_at DESC`,
-            [userId]
-        );
+        let query = `
+      SELECT id, type, message, created_at, seen
+      FROM notification
+      WHERE user_id = $1
+    `;
+        const params: (string | number | boolean)[] = [userId];
+
+        if (onlyUnseen) {
+            query += ` AND seen = false`;
+        }
+
+        query += ` ORDER BY created_at DESC`;
+
+        const result = await pool.query(query, params);
         res.status(StatusCodes.OK).json(result.rows);
+        return ;
     } catch (err) {
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Database error" });
+        console.error("Fehler beim Laden von Notifications:", err);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Database error" })
+        return;
     }
 });
 
-// Notification als gelesen markieren
-notificationRouter.patch('/:id/read', authenticateJWT, async (req: Request, res: Response) => {
-    const notificationId = req.params.id;
+// ───────────────────────────────────────────────────────────────────────────────
+// PUT /notifications/:id/read
+// Markiert eine Notification als gelesen
+// ───────────────────────────────────────────────────────────────────────────────
+notificationRouter.put("/:id/read", authenticateJWT, async (req: Request, res: Response) => {
+    const notifId = req.params.id;
     const userId = req.user!.id;
 
     try {
-        const result = await pool.query(
-            `UPDATE notification SET is_read = true WHERE id = $1 AND user_id = $2 RETURNING *`,
-            [notificationId, userId]
+        const updateRes = await pool.query(
+            `
+      UPDATE notification
+      SET seen = true
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+      `,
+            [notifId, userId]
         );
-        if (result.rowCount === 0) {
+        if (updateRes.rows.length === 0) {
             res.status(StatusCodes.NOT_FOUND).json({ error: "Notification not found" });
             return;
         }
-        res.status(StatusCodes.OK).json(result.rows[0]);
+        res.status(StatusCodes.OK).json({ notification: updateRes.rows[0] });
+        return;
     } catch (err) {
+        console.error("Fehler beim Markieren als gelesen:", err);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Database error" });
-    }
-});
-
-// Neue Notification anlegen (optional, meist intern vom System)
-notificationRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
-    const { user_id, type, related_id, message } = req.body;
-
-    if (!user_id || !type || !message) {
-        res.status(StatusCodes.BAD_REQUEST).json({ error: "Missing required fields" });
         return;
     }
-
-    try {
-        const result = await pool.query(
-            `INSERT INTO notification (user_id, type, related_id, message) VALUES ($1, $2, $3, $4) RETURNING *`,
-            [user_id, type, related_id || null, message]
-        );
-        res.status(StatusCodes.CREATED).json(result.rows[0]);
-    } catch (err) {
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: "Database error" });
-    }
 });
+
