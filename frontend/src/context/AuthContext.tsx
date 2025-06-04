@@ -1,7 +1,3 @@
-// ───────────────────────────────────────────────────────────────────────────────
-// Datei: src/context/AuthContext.tsx
-// ───────────────────────────────────────────────────────────────────────────────
-
 import React, {
     createContext,
     useContext,
@@ -9,7 +5,6 @@ import React, {
     useState,
     ReactNode,
 } from "react";
-import { useKeycloak } from "@react-keycloak/web";
 import axios from "axios";
 
 interface User {
@@ -29,36 +24,32 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { keycloak, initialized } = useKeycloak();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchUser = async () => {
-            if (keycloak?.authenticated) {
-                try {
-                    // Beispiel: Benutzerprofil von Backend abrufen (z.B. /user/me)
-                    const res = await axios.get<User>("http://localhost:3000/user/me", {
-                        headers: { Authorization: `Bearer ${keycloak.token}` },
-                        withCredentials: true,
-                    });
-                    setUser(res.data);
-                } catch {
-                    setUser(null);
-                }
-            } else {
+            try {
+                const res = await axios.get<User>("http://localhost:3000/login/me", {
+                    withCredentials: true,
+                });
+                setUser(res.data);
+            } catch {
                 setUser(null);
             }
             setIsLoading(false);
         };
 
-        if (initialized) {
-            fetchUser();
-        }
-    }, [keycloak, initialized]);
+        fetchUser();
+    }, []);
 
-    const login = () => keycloak.login();
-    const logout = () => keycloak.logout({ redirectUri: window.location.origin });
+    const login = () => {
+        window.location.href = "http://localhost:3000/login/login"; // Backend Login URL
+    };
+
+    const logout = () => {
+        window.location.href = "http://localhost:3000/login/logout"; // Backend Logout URL
+    };
 
     return (
         <AuthContext.Provider value={{ user, isLoading, login, logout }}>

@@ -10,9 +10,10 @@ import { Button } from "./ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import loginPage from "@/pages/LoginPage";
 
 const Navbar = forwardRef((props, ref) => {
-    const { user, logout } = useAuth();
+    const { user, logout, login } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [chatId, setChatId] = useState<string | null>(null);
 
@@ -100,20 +101,30 @@ const Navbar = forwardRef((props, ref) => {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-4">
                         {/* Login Icon (immer sichtbar) */}
-                        <Button variant="ghost" size="icon" asChild>
-                            <Link
-                                to="/auth/login"
-                                aria-label="Login"
-                                onClick={(e) => {
-                                    if (user) {
-                                        e.preventDefault();
-                                        alert("Du bist bereits eingeloggt.");
-                                    }
-                                }}
-                            >
-                                <LogIn size={20} className="text-foreground" />
-                            </Link>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                                if (user) {
+                                    alert("Du bist bereits eingeloggt.");
+                                } else {
+                                    login();
+                                }
+                            }}
+                            aria-label="Login"
+                        >
+                            <LogIn size={20} className="text-foreground" />
                         </Button>
+                        <Button
+                            className="border border-border text-foreground hover:bg-muted rounded-md px-4 py-2"
+                            onClick={() => {
+                                logout(); // redirect auf Backend Logout URL
+                                navigate("/");
+                            }}
+                        >
+                            Logout
+                        </Button>
+
 
                         {/* Eingeloggt-spezifische Buttons */}
                         {user && (

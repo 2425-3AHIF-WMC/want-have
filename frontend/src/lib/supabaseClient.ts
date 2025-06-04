@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Dateipfad: src/lib/supabaseClient.ts
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { createClient } from "@supabase/supabase-js";
 
 // Weil deine .env.local REACT_APP_SUPABASE_URL / REACT_APP_SUPABASE_ANON_KEY enthält,
