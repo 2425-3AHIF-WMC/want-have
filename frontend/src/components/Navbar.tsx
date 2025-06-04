@@ -1,7 +1,3 @@
-// ───────────────────────────────────────────────────────────────────────────────
-// Datei: src/components/Navbar.tsx
-// ───────────────────────────────────────────────────────────────────────────────
-
 import React, {
     useState,
     useRef,
@@ -9,7 +5,7 @@ import React, {
     useImperativeHandle,
     useEffect
 } from "react";
-import { Bell, MessageSquare, Menu, X, User, Plus } from "lucide-react";
+import { Bell, MessageSquare, Menu, X, User, Plus, LogIn } from "lucide-react";
 import { Button } from "./ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -96,24 +92,33 @@ const Navbar = forwardRef((props, ref) => {
                 <div className="flex justify-between items-center py-4">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-marktx-blue-600">
-              Markt<span className="text-marktx-blue-700">X</span>
-            </span>
+                        <span className="text-2xl font-bold text-marktx-blue-600">
+                            Markt<span className="text-marktx-blue-700">X</span>
+                        </span>
                     </Link>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-4">
-                        {!user ? (
-                            // Wenn nicht eingeloggt: Nur Login-Button
-                            <Button
-                                className="bg-marktx-blue-600 text-white hover:bg-marktx-blue-700 rounded-md px-4 py-2"
-                                onClick={() => (window.location.href = "/auth/login")}
+                        {/* Login Icon (immer sichtbar) */}
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link
+                                to="/auth/login"
+                                aria-label="Login"
+                                onClick={(e) => {
+                                    if (user) {
+                                        e.preventDefault();
+                                        alert("Du bist bereits eingeloggt.");
+                                    }
+                                }}
                             >
-                                Login
-                            </Button>
-                        ) : (
+                                <LogIn size={20} className="text-foreground" />
+                            </Link>
+                        </Button>
+
+                        {/* Eingeloggt-spezifische Buttons */}
+                        {user && (
                             <>
-                                {/* Benachrichtigungen-Button */}
+                                {/* Benachrichtigungen */}
                                 <Button variant="ghost" size="icon" asChild>
                                     <Link to="/notifications" aria-label="Benachrichtigungen">
                                         <div className="relative">
