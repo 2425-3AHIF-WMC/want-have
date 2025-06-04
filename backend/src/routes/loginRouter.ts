@@ -1,13 +1,15 @@
+// src/routes/login.ts
 import { Router } from "express";
 import { protect, KeycloakRequest } from "../middleware/keycloak";
 
 export const loginRouter = Router();
 
+// Public endpoint to verify server works
 loginRouter.get("/", (req, res) => {
-    res.send("Hello from the public login router");
+    res.send("Hello from login router");
 });
 
-// Protected route
+// Protected endpoint: get user info from Keycloak token
 loginRouter.get("/me", protect(), (req, res) => {
     const kreq = req as KeycloakRequest;
     const userInfo = kreq.kauth.grant.access_token.content;
@@ -19,7 +21,7 @@ loginRouter.get("/me", protect(), (req, res) => {
     });
 });
 
-// Logout (handled via Keycloak)
+// Logout (redirects to Keycloak logout)
 loginRouter.get("/logout", protect(), (req, res) => {
     (req as any).kauth.logout();
     res.redirect("/");

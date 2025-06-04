@@ -17,14 +17,18 @@ import fileUpload, { UploadedFile } from "express-fileupload";
 import path from "path";
 import fs from "fs";
 import dotenv from 'dotenv';
-import { keycloak } from "./middleware/keycloak";
+import session from "express-session";
+import Keycloak from "keycloak-connect";
 import { authenticateJWT } from "./middleware/auth";
 import {initSocket} from "../socket/broadcast";
 import {notificationRouter} from "./routes/notificationRouter";
 import {imageRouter} from "./routes/imageRouter";
+import {keycloak, sessionMiddleware} from "./middleware/keycloak";
 
 dotenv.config();
 
+
+// === Supabase Setup ===
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 if (!supabaseUrl || !supabaseKey) {
@@ -41,45 +45,51 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: process.env.CLIENT_URL ?? "*",
-        methods: ["GET", "POST", "DELETE", "PATCH"]
+        methods: ["GET", "POST", "DELETE", "PATCH"],
+        credentials: true,
     }
 });
 
-app.use(fileUpload());           // Dateiupload aktivieren
+app.use(fileUpload());
 app.use(express.json());
-app.use(cors({                   // Nur erlaubte Ursprünge (z.B. Frontend-Domain)
-    origin: process.env.CLIENT_URL ?? "*",
-    credentials: true
-}));
 
+app.use(
+    cors({
+        origin: "http://localhost:3001",
+        credentials: true,
+    })
+);
+
+
+// Wichtig: Session Middleware _vor_ Keycloak Middleware registrieren!
+app.use(sessionMiddleware);
+
+// Initialize Keycloak middleware
 app.use(keycloak.middleware());
 
+
 app.post("/upload", authenticateJWT, (req, res) => {
-        if (!req.files || !req.files.datei) {
-            res.status(400).send("Keine Datei hochgeladen");
-            return;
-        }
-
-        const datei = req.files.datei as UploadedFile;
-        // Pfad-Traversal verhindern:
-        const safeName = path.basename(datei.name);
-        const uploadDir = path.join(__dirname, "uploads");
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        const pfad = path.join(uploadDir, `${Date.now()}-${safeName}`);
-
-        try {
-            fs.writeFileSync(pfad, datei.data);
-            res.status(201).json({ message: "Datei gespeichert", filename: path.basename(pfad) });
-            return;
-        } catch (err) {
-            console.error("Fehler beim Datei-Upload:", err);
-            res.status(500).json({ error: "Interner Serverfehler beim Speichern der Datei" });
-            return;
-        }
+    if (!req.files || !req.files.datei) {
+        res.status(400).send("Keine Datei hochgeladen");
+        return;
     }
-);
+
+    const datei = req.files.datei as UploadedFile;
+    const safeName = path.basename(datei.name);
+    const uploadDir = path.join(__dirname, "uploads");
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const pfad = path.join(uploadDir, `${Date.now()}-${safeName}`);
+
+    try {
+        fs.writeFileSync(pfad, datei.data);
+        res.status(201).json({ message: "Datei gespeichert", filename: path.basename(pfad) });
+    } catch (err) {
+        console.error("Fehler beim Datei-Upload:", err);
+        res.status(500).json({ error: "Interner Serverfehler beim Speichern der Datei" });
+    }
+});
 
 initSocket(io);
 
@@ -87,7 +97,6 @@ io.on("connection", (socket) => {
     console.log("🔌 Socket verbunden:", socket.id);
 
     socket.on("user-online", (userId: string) => {
-        // userId → socket.id im Map speichern
         const onlineUsers: Map<string, string> = (global as any).onlineUsers || new Map();
         onlineUsers.set(userId, socket.id);
         (global as any).onlineUsers = onlineUsers;
@@ -98,7 +107,6 @@ io.on("connection", (socket) => {
     socket.on("join-chat", (chatId: string) => {
         console.log(`User ${socket.id} tritt Chat ${chatId} bei`);
 
-        // Vorherigen Supabase-Channel abschließen, falls vorhanden
         if (socket.data.supabaseChannel) {
             supabase.removeChannel(socket.data.supabaseChannel);
             delete socket.data.supabaseChannel;
@@ -174,7 +182,6 @@ io.on("connection", (socket) => {
     });
 });
 
-
 app.use('/users', userRouter);
 app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
@@ -187,40 +194,36 @@ app.use("/notifications", notificationRouter);
 app.use("/images", imageRouter);
 
 app.delete('/api/products/:id', authenticateJWT, async (req, res) => {
-        const productId = req.params.id;
-        const userId = req.user!.id; // aus dem JWT
+    const productId = req.params.id;
+    const userId = req.user!.id;
 
-        try {
-            // 1) Besitzer-ID abfragen
-            const { rows } = await pool.query(
-                'SELECT owner_id FROM ad WHERE id = $1',
-                [productId]
-            );
-            if (rows.length === 0) {
-                res.status(404).json({ error: 'Anzeige nicht gefunden' });
-                return;
-            }
-            const ownerId = rows[0].owner_id;
-            if (ownerId !== userId) {
-                res.status(403).json({ error: 'Nicht berechtigt, diese Anzeige zu löschen' });
-                return;
-            }
-
-            await pool.query('DELETE FROM ad WHERE id = $1', [productId]);
-            res.status(200).json({ success: true, message: 'Anzeige gelöscht' });
-        } catch (err) {
-            console.error('Fehler beim Löschen der Anzeige:', err);
-            res.status(500).json({ error: 'Interner Serverfehler' });
+    try {
+        const { rows } = await pool.query(
+            'SELECT owner_id FROM ad WHERE id = $1',
+            [productId]
+        );
+        if (rows.length === 0) {
+            res.status(404).json({ error: 'Anzeige nicht gefunden' });
             return;
         }
+        const ownerId = rows[0].owner_id;
+        if (ownerId !== userId) {
+            res.status(403).json({ error: 'Nicht berechtigt, diese Anzeige zu löschen' });
+            return;
+        }
+
+        await pool.query('DELETE FROM ad WHERE id = $1', [productId]);
+        res.status(200).json({ success: true, message: 'Anzeige gelöscht' });
+    } catch (err) {
+        console.error('Fehler beim Löschen der Anzeige:', err);
+        res.status(500).json({ error: 'Interner Serverfehler' });
     }
-);
+});
 
 if (process.env.ANON_KEY) {
     supabase = createClient("https://otrclrdtfqsjhuuxkhzk.supabase.co", process.env.ANON_KEY);
 }
 
-// Server starten
 server.listen(port, () => {
     console.log(`🚀 Server läuft auf Port ${port}`);
 });

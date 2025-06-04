@@ -1,14 +1,8 @@
-import React, {
-    createContext,
-    useContext,
-    useEffect,
-    useState,
-    ReactNode,
-} from "react";
+// src/context/AuthContext.tsx
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import axios from "axios";
 
 interface User {
-    id: string;
     username: string;
     email?: string;
     name?: string;
@@ -36,19 +30,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(res.data);
             } catch {
                 setUser(null);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
-
         fetchUser();
     }, []);
 
     const login = () => {
-        window.location.href = "http://localhost:3000/login/login"; // Backend Login URL
+        // Redirect user to Keycloak login page (handled by backend)
+        window.location.href = "http://localhost:3000/login";
     };
 
     const logout = () => {
-        window.location.href = "http://localhost:3000/login/logout"; // Backend Logout URL
+        window.location.href = "http://localhost:3000/login/logout";
     };
 
     return (
@@ -58,10 +53,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error("useAuth must be used within AuthProvider");
-    }
+    if (!context) throw new Error("useAuth must be used within AuthProvider");
     return context;
 };

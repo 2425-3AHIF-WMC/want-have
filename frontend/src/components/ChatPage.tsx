@@ -67,7 +67,7 @@ const ChatPage: React.FC = () => {
         <div className="h-screen max-w-xl mx-auto border rounded-lg shadow-md overflow-hidden">
             <ChatComponent
                 chatId={chatId}
-                userId={user!.id}
+                userId={user!.id ?? ""}
                 chatPartner={chatPartner}
             />
         </div>

@@ -47,7 +47,7 @@ const App = () => (
 
                     <Routes>
                         {/* Öffentliche Routen */}
-                        <Route path="/auth/" element={<LoginPage />} />
+                        <Route path="/login" element={<LoginPage />} />
                         <Route path="/" element={<Home />} />
                         <Route path="/faq" element={<FAQ />} />
                         <Route path="/rules" element={<Rules />} />
