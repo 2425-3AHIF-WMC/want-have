@@ -1,8 +1,13 @@
 import React from "react";
-import { useAuth } from "../context/AuthContext";
+import {useAuth} from "../context/AuthContext";
 
 const LoginPage: React.FC = () => {
-    const { user, isLoading, login, logout } = useAuth();
+    const { user, isLoading, logout } = useAuth();
+
+    // Login-Funktion, die zum Backend-Login-Endpoint weiterleitet
+    const login = () => {
+        window.location.href = "/login";
+    };
 
     if (isLoading) return <div>Lädt …</div>;
 
@@ -23,5 +28,4 @@ const LoginPage: React.FC = () => {
         </div>
     );
 };
-
 export default LoginPage;

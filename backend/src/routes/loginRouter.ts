@@ -1,8 +1,11 @@
 // src/routes/login.ts
 import { Router } from "express";
-import { protect, KeycloakRequest } from "../middleware/keycloak";
+import { protect, KeycloakRequest, keycloak } from "../middleware/keycloak";
+
 
 export const loginRouter = Router();
+
+loginRouter.get("/login", keycloak.protect());
 
 // Public endpoint to verify server works
 loginRouter.get("/", (req, res) => {

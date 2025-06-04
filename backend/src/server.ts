@@ -36,7 +36,7 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 let supabase: SupabaseClient;
 supabase = createClient(supabaseUrl, supabaseKey);
@@ -66,6 +66,7 @@ app.use(sessionMiddleware);
 
 // Initialize Keycloak middleware
 app.use(keycloak.middleware());
+app.use("/login", loginRouter);
 
 
 app.post("/upload", authenticateJWT, (req, res) => {
