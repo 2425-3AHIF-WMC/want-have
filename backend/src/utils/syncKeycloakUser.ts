@@ -14,6 +14,6 @@ export async function syncKeycloakUser(token: any) {
     const insert = await pool.query(
         'INSERT INTO "user" (username, email, keycloak_id) VALUES ($1, $2, $3) RETURNING *',
         [username, email, keycloakId]
-    );
+);
     return insert.rows[0];
 }

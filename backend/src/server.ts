@@ -17,12 +17,11 @@ import fileUpload, { UploadedFile } from "express-fileupload";
 import path from "path";
 import fs from "fs";
 import dotenv from 'dotenv';
-import { keycloak, sessionMiddleware } from "./middleware/keycloak";
+import { keycloak } from "./middleware/keycloak";
 import { authenticateJWT } from "./middleware/auth";
 import {initSocket} from "../socket/broadcast";
 import {notificationRouter} from "./routes/notificationRouter";
 import {imageRouter} from "./routes/imageRouter";
-import session from "express-session";
 
 dotenv.config();
 
@@ -216,6 +215,10 @@ app.delete('/api/products/:id', authenticateJWT, async (req, res) => {
         }
     }
 );
+
+if (process.env.ANON_KEY) {
+    supabase = createClient("https://otrclrdtfqsjhuuxkhzk.supabase.co", process.env.ANON_KEY);
+}
 
 // Server starten
 server.listen(port, () => {
