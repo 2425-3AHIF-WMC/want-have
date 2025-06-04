@@ -47,7 +47,7 @@ const App = () => (
 
                     <Routes>
                         {/* Öffentliche Routen */}
-                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/auth/" element={<LoginPage />} />
                         <Route path="/" element={<Home />} />
                         <Route path="/faq" element={<FAQ />} />
                         <Route path="/rules" element={<Rules />} />
@@ -83,7 +83,7 @@ const App = () => (
                         />
 
                         {/* Fallback */}
-                        <Route path="*" element={<Navigate to="/" />} />
+               j         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
 
                 </BrowserRouter>

@@ -22,6 +22,7 @@ import { authenticateJWT } from "./middleware/auth";
 import {initSocket} from "../socket/broadcast";
 import {notificationRouter} from "./routes/notificationRouter";
 import {imageRouter} from "./routes/imageRouter";
+import session from "express-session";
 
 dotenv.config();
 
@@ -51,8 +52,8 @@ app.use(cors({                   // Nur erlaubte Ursprünge (z.B. Frontend-Domai
     origin: process.env.CLIENT_URL ?? "*",
     credentials: true
 }));
-app.use(sessionMiddleware);
-app.use(keycloak.middleware({ logout: "/logout" }));
+
+app.use(keycloak.middleware());
 
 app.post("/upload", authenticateJWT, (req, res) => {
         if (!req.files || !req.files.datei) {
@@ -174,12 +175,13 @@ io.on("connection", (socket) => {
     });
 });
 
+
 app.use('/users', userRouter);
 app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
 app.use('/messages', messageRouter);
 app.use('/reports', reportRouter);
-app.use('/auth', loginRouter);
+app.use('/login', loginRouter);
 app.use('/requests', purchaseRequestRouter);
 app.use('/recommendations', recommendationRouter);
 app.use("/notifications", notificationRouter);

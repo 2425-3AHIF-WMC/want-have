@@ -3,6 +3,7 @@ dist/
 build/
 .idea/
 static/
-.env
+frontend/.env
+backend/.env.local
 index.html
 asset-manifest.json

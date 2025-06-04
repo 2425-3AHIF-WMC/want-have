@@ -1,21 +1,17 @@
-import { Router } from "express";
-import { protect, KeycloakRequest } from "../middleware/keycloak";
-import { Request, Response } from "express";
+import { Router, Request, Response } from "express";
+import { protect, KeycloakRequest, keycloak } from "../middleware/keycloak";
 
 export const loginRouter = Router();
 
-// Public route: Test‐Endpunkt
+// ✅ Öffentliche Route
 loginRouter.get("/", (_req: Request, res: Response) => {
     res.send("Hello from the public login router");
 });
 
-// Login‐Start: Keycloak übernimmt Redirect
-loginRouter.get("/login", (req: Request, res: Response) => {
-    // Keycloak Middleware leitet automatisch weiter
-    (req as any).kauth.login();
-});
+// ✅ Login-Routen nicht manuell aufrufen – nutze Keycloak-Redirects
+// Keycloak übernimmt den Login-Redirect automatisch
 
-// Protected route: eigene User‐Daten
+// ✅ Geschützte Route – Benutzerinfo abrufen
 loginRouter.get("/me", protect(), (req: Request, res: Response) => {
     const kreq = req as KeycloakRequest;
     const userInfo = kreq.kauth.grant.access_token.content;
@@ -27,8 +23,10 @@ loginRouter.get("/me", protect(), (req: Request, res: Response) => {
     });
 });
 
-// Logout: Keycloak‐Abmeldung
+// ✅ Logout via Redirect zur Keycloak-Logout-URL
 loginRouter.get("/logout", protect(), (req: Request, res: Response) => {
-    (req as any).kauth.logout();
-    res.redirect("/");
+    const kreq = req as KeycloakRequest;
+    const redirectUri = encodeURIComponent("http://localhost:5173"); // ggf. Frontend-URL anpassen
+    const logoutUrl = `${keycloak.config.realmUrl}/protocol/openid-connect/logout?redirect_uri=${redirectUri}&id_token_hint=${kreq.kauth.grant.id_token.token}`;
+    res.redirect(logoutUrl);
 });
