@@ -1,4 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+// ───────────────────────────────────────────────────────────────────────────────
+// Datei: src/context/AuthContext.tsx
+// ───────────────────────────────────────────────────────────────────────────────
+
+import React, {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    ReactNode,
+} from "react";
 import { useKeycloak } from "@react-keycloak/web";
 import axios from "axios";
 
@@ -18,7 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { keycloak, initialized } = useKeycloak();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -27,12 +37,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchUser = async () => {
             if (keycloak?.authenticated) {
                 try {
+                    // Beispiel: Benutzerprofil von Backend abrufen (z.B. /user/me)
                     const res = await axios.get<User>("http://localhost:3000/user/me", {
                         headers: { Authorization: `Bearer ${keycloak.token}` },
                         withCredentials: true,
                     });
                     setUser(res.data);
-                } catch (err) {
+                } catch {
                     setUser(null);
                 }
             } else {
@@ -47,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [keycloak, initialized]);
 
     const login = () => keycloak.login();
-    const logout = () => keycloak.logout();
+    const logout = () => keycloak.logout({ redirectUri: window.location.origin });
 
     return (
         <AuthContext.Provider value={{ user, isLoading, login, logout }}>
@@ -56,8 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
     const context = useContext(AuthContext);
-    if (!context) throw new Error("useAuth must be used within AuthProvider");
+    if (!context) {
+        throw new Error("useAuth must be used within AuthProvider");
+    }
     return context;
 };

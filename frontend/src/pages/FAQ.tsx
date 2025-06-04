@@ -59,7 +59,7 @@ const FAQ = () => {
         <>
             <Navbar />
             <main className="marktx-container py-10 min-h-[60vh]">
-                <h1 className="text-3xl font-bold mb-8 text-center">📚 Häufig gestellte Fragen 📚</h1>
+                <h1 className="text-3xl font-bold mb-8 text-center">Häufig gestellte Fragen</h1>
 
                 <Tabs defaultValue="Einkauf" className="w-full max-w-4xl mx-auto">
                     <TabsList className="grid grid-cols-3 bg-gray-100 rounded-lg p-1 mb-6">
