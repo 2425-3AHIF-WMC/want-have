@@ -28,11 +28,6 @@ loginRouter.get("/login", keycloak.protect(), (req, res) => {
     res.redirect("http://localhost:3000");
 });
 
-// Public endpoint to verify server works
-loginRouter.get("/", (req, res) => {
-    res.send("Hello from login router");
-});
-
 // Protected endpoint: get user info from Keycloak token
 loginRouter.get("/me", protect(), (req, res) => {
     const kreq = req as KeycloakRequest;
