@@ -65,7 +65,6 @@ app.use(sessionMiddleware);
 
 // Initialize Keycloak middleware
 app.use(keycloak.middleware());
-app.use("/login", loginRouter);
 
 
 app.post("/upload", authenticateJWT, (req, res) => {

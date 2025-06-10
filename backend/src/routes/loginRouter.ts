@@ -2,36 +2,44 @@
 import { Router } from "express";
 import { protect, KeycloakRequest, keycloak } from "../middleware/keycloak";
 import jwt from "jsonwebtoken";
+import {StatusCodes} from "http-status-codes";
 
 export const loginRouter = Router();
-loginRouter.get("/login", keycloak.protect(), (req, res) => {
-    const kreq = req as KeycloakRequest;
-    const userInfo = kreq.kauth.grant.access_token.content;
 
-    // 1. Eigenes JWT erstellen (für zusätzliche Sicherheit)
+// 🔐 Protected login route to issue custom JWT
+loginRouter.get("/", keycloak.protect(), (req, res) => {
+    const kreq = req as KeycloakRequest;
+
+    const userInfo = kreq.kauth?.grant?.access_token?.content;
+    if (!userInfo) {
+        res.status(StatusCodes.UNAUTHORIZED).json({ error: "Kein gültiger Zugriffstoken" });
+        return;
+    }
+
     const token = jwt.sign(
         { userId: userInfo.sub },
         process.env.JWT_SECRET!,
         { expiresIn: "1h" }
     );
 
-    // 2. Cookie setzen (für Frontend)
     res.cookie("token", token, {
         httpOnly: true,
-        secure: false,       // WICHTIG: Auf false setzen, da ihr HTTP verwendet!
-        sameSite: "lax",    // "none" funktioniert nur mit HTTPS
-        domain: "localhost",
-        maxAge: 3600000
+        secure: false,
+        sameSite: "lax",
+        maxAge: 3600000,
     });
 
-    // 3. Weiterleiten zur Frontend-URL
     res.redirect("http://localhost:3000");
 });
 
-// Protected endpoint: get user info from Keycloak token
-loginRouter.get("/me", protect(), (req, res) => {
+loginRouter.get("/me", keycloak.protect(), (req, res) => {
     const kreq = req as KeycloakRequest;
-    const userInfo = kreq.kauth.grant.access_token.content;
+    const userInfo = kreq.kauth?.grant?.access_token?.content;
+
+    if (!userInfo) {
+        res.status(StatusCodes.UNAUTHORIZED).json({ error: "Token fehlt" });
+        return;
+    }
 
     res.json({
         id: userInfo.sub,
@@ -39,11 +47,9 @@ loginRouter.get("/me", protect(), (req, res) => {
         email: userInfo.email,
         name: userInfo.name || `${userInfo.given_name} ${userInfo.family_name}`,
     });
-
 });
 
-// Logout (redirects to Keycloak logout)
-loginRouter.get("/logout", protect(), (req, res) => {
+loginRouter.get("/logout", keycloak.protect(), (req, res) => {
     (req as any).kauth.logout();
     res.redirect("/");
 });
