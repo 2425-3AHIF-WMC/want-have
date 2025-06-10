@@ -21,6 +21,7 @@ interface KeycloakRequest extends Request {
         grant: {
             access_token: {
                 content: {
+                    sub: string;
                     preferred_username: string;
                     email?: string;
                     name?: string;

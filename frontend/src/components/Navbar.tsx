@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import loginPage from "@/pages/LoginPage";
 
 const Navbar = forwardRef((props, ref) => {
-    const { user, logout, login } = useAuth();
+    const { user, logout, login, isLoading } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [chatId, setChatId] = useState<string | null>(null);
 
@@ -29,7 +29,6 @@ const Navbar = forwardRef((props, ref) => {
             searchInputRef.current?.focus();
         }
     }));
-
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
@@ -108,7 +107,7 @@ const Navbar = forwardRef((props, ref) => {
                                 if (user) {
                                     alert("Du bist bereits eingeloggt.");
                                 } else {
-                                    login();
+                                    window.location.href = "http://localhost:3001/login";  // Korrekt!
                                 }
                             }}
                             aria-label="Login"

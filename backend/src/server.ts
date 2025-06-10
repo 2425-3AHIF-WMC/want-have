@@ -53,12 +53,11 @@ const io = new Server(server, {
 app.use(fileUpload());
 app.use(express.json());
 
-app.use(
-    cors({
-        origin: "http://localhost:3001",
-        credentials: true,
-    })
-);
+app.use(cors({
+    origin: "http://localhost:3000", // Muss genau mit Frontend-URL übereinstimmen
+    credentials: true,               // Wichtig für Cookies
+    methods: ["GET", "POST", "PUT", "DELETE"] // Alle benötigten Methoden erlauben
+}));
 
 
 // Wichtig: Session Middleware _vor_ Keycloak Middleware registrieren!

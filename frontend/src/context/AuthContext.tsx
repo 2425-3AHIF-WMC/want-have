@@ -22,29 +22,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    // Axios so konfigurieren, dass JWT-Cookie mitgeschickt wird
+    axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+    axios.defaults.withCredentials = true;
+
     useEffect(() => {
-        const fetchUser = async () => {
+        // Beim Laden prüfen, ob wir eingeloggt sind
+        async function fetchUser() {
             try {
-                const res = await axios.get<User>("http://localhost:3000/login/me", {
-                    withCredentials: true,
-                });
+                const res = await axios.get<User>("/login/me");
                 setUser(res.data);
             } catch {
                 setUser(null);
             } finally {
                 setIsLoading(false);
             }
-        };
+        }
         fetchUser();
     }, []);
 
     const login = () => {
-        // Redirect user to Keycloak login page (handled by backend)
-        window.location.href = "http://localhost:3000/login";
+        // WICHTIG: Weiterleitung zur Backend-Login-Route (Port 3001)
+        window.location.href = "http://localhost:3001/login";
     };
 
     const logout = () => {
-        window.location.href = "http://localhost:3000/login/logout";
+        // Beendet Session in Keycloak und leitet zurück
+        window.location.href = `${process.env.REACT_APP_API_URL}/login/logout`;
     };
 
     return (
@@ -55,7 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 };
 
 export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) throw new Error("useAuth must be used within AuthProvider");
-    return context;
+    const ctx = useContext(AuthContext);
+    if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+    return ctx;
 };
