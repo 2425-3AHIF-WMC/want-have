@@ -28,27 +28,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         // Beim Laden prüfen, ob wir eingeloggt sind
-        async function fetchUser() {
+        const fetchUser = async () => {
             try {
-                const res = await axios.get<User>("/login/me");
+                const res = await axios.get(`${process.env.REACT_APP_API_URL}/me`, {
+                    withCredentials: true
+                });
                 setUser(res.data);
-            } catch {
+            } catch (err) {
+                console.error("Auth error:", err);
                 setUser(null);
             } finally {
                 setIsLoading(false);
             }
-        }
+        };
         fetchUser();
     }, []);
 
     const login = () => {
-        // WICHTIG: Weiterleitung zur Backend-Login-Route (Port 3001)
-        window.location.href = "http://localhost:3001/login";
+        window.location.href = `${process.env.REACT_APP_API_URL}/login`;
     };
 
     const logout = () => {
-        // Beendet Session in Keycloak und leitet zurück
-        window.location.href = `${process.env.REACT_APP_API_URL}/login/logout`;
+        axios.get(`${process.env.REACT_APP_API_URL}/logout`, {
+            withCredentials: true
+        }).finally(() => {
+            setUser(null);
+            window.location.href = "/";
+        });
     };
 
     return (

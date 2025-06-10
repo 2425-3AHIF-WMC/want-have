@@ -186,7 +186,7 @@ app.use('/ads', adRouter);
 app.use('/chats', chatRouter);
 app.use('/messages', messageRouter);
 app.use('/reports', reportRouter);
-app.use('/login', loginRouter);
+app.use('/', loginRouter);
 app.use('/requests', purchaseRequestRouter);
 app.use('/recommendations', recommendationRouter);
 app.use("/notifications", notificationRouter);
