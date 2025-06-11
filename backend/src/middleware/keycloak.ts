@@ -4,14 +4,14 @@ import { Request, Response, NextFunction } from "express";
 
 const memoryStore = new session.MemoryStore();
 
-export const sessionMiddleware = session({
-    secret: process.env.SESSION_SECRET || "default-secret",
+const sessionMiddleware = session({
+    secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: false,
     store: memoryStore,
     cookie: {
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         maxAge: 1000 * 60 * 30 // 30 minutes
     }
 });
@@ -25,15 +25,9 @@ const keycloakConfig = {
     "public-client": true
 };
 
-const keycloak = new Keycloak({ store: memoryStore }, keycloakConfig);
+const keycloakInstance = new Keycloak({ store: memoryStore }, keycloakConfig);
 
-export const protect = () => {
-    return (req: Request, res: Response, next: NextFunction) => {
-        return keycloak.protect()(req as KeycloakRequest, res, next);
-    };
-};
-
-// Erweiterte Typdefinition
+// Typdefinitionen
 declare module "express-session" {
     interface SessionData {
         token?: string;
@@ -60,7 +54,14 @@ export interface KeycloakRequest extends Request {
                 token: string;
             };
         };
+        logout?: () => void;
     };
 }
 
-export { keycloak };
+export const protect = () => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        return keycloakInstance.protect()(req as KeycloakRequest, res, next);
+    };
+};
+
+export { sessionMiddleware, keycloakInstance as keycloak };
