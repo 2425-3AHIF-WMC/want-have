@@ -8,9 +8,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { useAuth } from "../context/AuthContext"; // oder dein Pfad
+import { supabase } from "../lib/supabaseClient";
 
+type Filters = {
+    category: string;
+    condition: string;
+    priceRange: [number, number];
+    isFree: boolean;
+};
+
+async function fetchProducts(filters: Filters, searchTerm: string): Promise<Product[]> {
+    let query = supabase.from("ads").select("*");
+
+    if (filters.category && filters.category !== "Alle Kategorien") {
+        query = query.ilike("category", `%${filters.category}%`);
+    }
+    if (filters.condition && filters.condition !== "Alle Zustände") {
+        query = query.ilike("condition", `%${filters.condition}%`);
+    }
+    if (filters.isFree) {
+        query = query.eq("is_free", true);
+    } else {
+        query = query.gte("price", filters.priceRange[0]).lte("price", filters.priceRange[1]);
+    }
+    if (searchTerm.trim()) {
+        query = query.ilike("title", `%${searchTerm.trim()}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw new Error(error.message);
+
+    return data;
+}
 
 export type ProductPrice = number | "Zu verschenken";
 
@@ -43,35 +74,10 @@ const Home: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState("");
 
     // React Query: Produkte vom Backend holen
-    const {
-        data: products,
-        isLoading,
-        error,
-        refetch
-    } = useQuery<Product[], Error>({
+    const { data: products, isLoading, error, refetch } = useQuery({
         queryKey: ["products", filters, searchTerm],
-        queryFn: async () => {
-            const params: any = {};
-            if (searchTerm.trim()) params.search = searchTerm.trim();
-            if (filters.category !== "Alle Kategorien") params.category = filters.category;
-            if (filters.condition !== "Alle Zustände") params.condition = filters.condition;
-            if (filters.isFree) params.isFree = true;
-            if (!filters.isFree) {
-                params.priceMin = filters.priceRange[0];
-                params.priceMax = filters.priceRange[1];
-            }
-            const res = await axios.get<Product[]>(
-                `${process.env.REACT_APP_API_URL}/ads`,
-                {
-                    params,
-                    withCredentials: true
-                }
-            );
-            return res.data;
-        },
-        placeholderData: (prev) => prev
+        queryFn: () => fetchProducts(filters, searchTerm),
     });
-
 
     // Filter anwenden, wenn sich Filter oder Suchterm ändert
     useEffect(() => {

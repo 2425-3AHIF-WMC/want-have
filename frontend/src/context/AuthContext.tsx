@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     setIsLoading(false);
                     return;
                 }
+
                 const user = {
                     id: tokenParsed.sub,
                     username: tokenParsed.preferred_username || "",
@@ -51,11 +52,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 };
                 setUser(user);
                 setIsLoading(false);
+
+                // 👉 Hier auf Logout reagieren
+                keycloak.onAuthLogout = () => {
+                    console.log("🚪 Keycloak logout event");
+                    setUser(null);
+
+                };
             })
             .catch(() => {
                 setIsLoading(false);
             });
     }, []);
+
 
 
 

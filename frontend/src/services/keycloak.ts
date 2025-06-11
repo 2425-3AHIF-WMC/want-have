@@ -22,6 +22,8 @@ export const initKeycloak = (): Promise<boolean> => {
             (keycloak.init(options) as unknown as Promise<boolean>)
                 .then((authenticated) => {
                     console.log("✅ Keycloak authenticated:", authenticated);
+
+
                     resolve(authenticated);
                 })
                 .catch((error) => {
