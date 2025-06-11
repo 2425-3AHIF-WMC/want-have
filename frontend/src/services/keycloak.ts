@@ -12,7 +12,7 @@ let initPromise: Promise<boolean> | undefined;
 export const initKeycloak = (): Promise<boolean> => {
     if (!initPromise) {
         const options: KeycloakInitOptions = {
-            onLoad: "login-required",
+            onLoad: "check-sso",
             checkLoginIframe: false,
             pkceMethod: "S256",
             flow: "standard",

@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Weil deine .env.local REACT_APP_SUPABASE_URL / REACT_APP_SUPABASE_ANON_KEY enthält,
-// greift supabaseClient hier auf process.env.REACT_APP_* zu:
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 

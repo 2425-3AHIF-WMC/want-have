@@ -1,31 +1,16 @@
-import React, {
-    useState,
-    useRef,
-    forwardRef,
-    useImperativeHandle,
-    useEffect
-} from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
 import { Bell, MessageSquare, Menu, X, User, Plus, LogIn } from "lucide-react";
 import { Button } from "./ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import loginPage from "@/pages/LoginPage";
-interface NotificationItem {
-    id: string;
-    type: string;
-    message: string;
-    related_id: string | null;
-    created_at: string;
-    is_read: boolean;
-}
 
 const Navbar = forwardRef((props, ref) => {
     const { user, logout, login, isLoading } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [chatId, setChatId] = useState<string | null>(null);
 
-    // Badge-Zustände
+    // Badges für neue Nachrichten & Benachrichtigungen
     const [hasNewMessages, setHasNewMessages] = useState(false);
     const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
@@ -37,30 +22,22 @@ const Navbar = forwardRef((props, ref) => {
             searchInputRef.current?.focus();
         }
     }));
-    const toggleMenu = () => {
-        setIsMenuOpen(!isMenuOpen);
-    };
 
-    // Chat-ID vom Server holen
+    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+    // Chat-ID vom Server holen (wenn eingeloggt)
     useEffect(() => {
         if (user) {
             axios
-                .get<{ chatId: string }>(`${process.env.REACT_APP_API_URL}/chats/me`, {
-                    withCredentials: true
-                })
-                .then((res) => {
-                    setChatId(res.data.chatId);
-                })
-                .catch((err) => {
-                    console.error("Fehler beim Laden der Chat-ID:", err);
-                    setChatId(null);
-                });
+                .get<{ chatId: string }>(`${process.env.REACT_APP_API_URL}/chats/me`, { withCredentials: true })
+                .then(res => setChatId(res.data.chatId))
+                .catch(() => setChatId(null));
         } else {
             setChatId(null);
         }
     }, [user]);
 
-    // Badge-Status abrufen: neue Messages & neue Notifications
+    // Neue Nachrichten & Benachrichtigungen abfragen
     useEffect(() => {
         async function fetchBadgeStatus() {
             if (!user) {
@@ -69,26 +46,22 @@ const Navbar = forwardRef((props, ref) => {
                 return;
             }
             try {
-                // 1) Neue Messages
                 const resMessages = await axios.get<{ hasNew: boolean }>(
                     `${process.env.REACT_APP_API_URL}/api/hasNewMessages`,
                     { withCredentials: true }
                 );
                 setHasNewMessages(resMessages.data.hasNew);
-            } catch (err) {
-                console.error("Fehler beim Laden neuer Nachrichten:", err);
+            } catch {
                 setHasNewMessages(false);
             }
             try {
-                // 2) Neue Notifications: Anfrage an /notifications?onlyUnseen=true
-                    const resNotifs = await axios.get<NotificationItem[]>(
-                         `${process.env.REACT_APP_API_URL}/notifications`,
-                      { withCredentials: true }
-                     );
-                    const unseenExists = resNotifs.data.some((n) => !n.is_read);
-                + setHasNewNotifications(unseenExists);
-            } catch (err) {
-                console.error("Fehler beim Laden neuer Notifications:", err);
+                const resNotifs = await axios.get(
+                    `${process.env.REACT_APP_API_URL}/notifications`,
+                    { withCredentials: true }
+                );
+                const unseenExists = resNotifs.data.some((n: any) => !n.is_read);
+                setHasNewNotifications(unseenExists);
+            } catch {
                 setHasNewNotifications(false);
             }
         }
@@ -101,60 +74,42 @@ const Navbar = forwardRef((props, ref) => {
                 <div className="flex justify-between items-center py-4">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-2">
-                        <span className="text-2xl font-bold text-marktx-blue-600">
-                            Markt<span className="text-marktx-blue-700">X</span>
-                        </span>
+            <span className="text-2xl font-bold text-marktx-blue-600">
+              Markt<span className="text-marktx-blue-700">X</span>
+            </span>
                     </Link>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-4">
-                        {/* Login Icon (immer sichtbar) */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                                if (user) {
-                                    alert("Du bist bereits eingeloggt.");
-                                } else {
-                                    window.location.href = "http://localhost:3001/login";  // Korrekt!
-                                }
-                            }}
-                            aria-label="Login"
-                        >
-                            <LogIn size={20} className="text-foreground" />
-                        </Button>
-                        <Button
-                            className="border border-border text-foreground hover:bg-muted rounded-md px-4 py-2"
-                            onClick={() => {
-                                logout(); // redirect auf Backend Logout URL
-                                navigate("/");
-                            }}
-                        >
-                            Logout
-                        </Button>
-
-
-                        {/* Eingeloggt-spezifische Buttons */}
-                        {user && (
+                        {!user ? (
+                            // Vor Login: Nur Login Button
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => window.location.href = "http://localhost:3001/login"}
+                                aria-label="Login"
+                            >
+                                <LogIn size={20} className="text-foreground" />
+                            </Button>
+                        ) : (
+                            // Nach Login: Benachrichtigungen, Chat, Logout
                             <>
                                 {/* Benachrichtigungen */}
                                 <Button variant="ghost" size="icon" asChild>
                                     <Link to="/notifications" aria-label="Benachrichtigungen">
                                         <div className="relative">
                                             <Bell size={20} className="text-foreground" />
-                                            {hasNewNotifications && (
-                                                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />
-                                            )}
+                                            {hasNewNotifications && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />}
                                         </div>
                                     </Link>
                                 </Button>
 
-                                {/* Nachrichten-Button */}
+                                {/* Chat-Icon */}
                                 <Button variant="ghost" size="icon" asChild>
                                     <Link
                                         to={chatId ? `/messages/${chatId}` : "#"}
                                         aria-label="Nachrichten"
-                                        onClick={(e) => {
+                                        onClick={e => {
                                             if (!chatId) {
                                                 e.preventDefault();
                                                 alert("Bitte zuerst anmelden, um Nachrichten zu sehen!");
@@ -163,29 +118,12 @@ const Navbar = forwardRef((props, ref) => {
                                     >
                                         <div className="relative">
                                             <MessageSquare size={20} className="text-foreground" />
-                                            {hasNewMessages && (
-                                                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />
-                                            )}
+                                            {hasNewMessages && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />}
                                         </div>
                                     </Link>
                                 </Button>
 
-                                {/* Profil-Button */}
-                                <Button variant="ghost" size="icon" asChild>
-                                    <Link to="/profile" aria-label="Profil">
-                                        <User size={20} className="text-foreground" />
-                                    </Link>
-                                </Button>
-
-                                {/* Anzeige erstellen */}
-                                <Button className="bg-marktx-blue-600 text-white hover:bg-marktx-blue-700 rounded-md px-4 py-2" asChild>
-                                    <Link to="/create" className="flex items-center">
-                                        <Plus size={20} className="mr-2 text-white" />
-                                        Anzeige erstellen
-                                    </Link>
-                                </Button>
-
-                                {/* Logout */}
+                                {/* Logout Button */}
                                 <Button
                                     className="border border-border text-foreground hover:bg-muted rounded-md px-4 py-2"
                                     onClick={() => {
@@ -221,15 +159,6 @@ const Navbar = forwardRef((props, ref) => {
                                 </Link>
                             ) : (
                                 <>
-                                    {/* Anzeige erstellen */}
-                                    <Link
-                                        to="/create"
-                                        className="flex items-center px-4 py-2 text-marktx-blue-600 font-medium"
-                                    >
-                                        <Plus size={20} className="mr-2" />
-                                        Anzeige erstellen
-                                    </Link>
-
                                     {/* Benachrichtigungen */}
                                     <Link
                                         to="/notifications"
@@ -237,16 +166,14 @@ const Navbar = forwardRef((props, ref) => {
                                     >
                                         <Bell size={20} className="mr-2" />
                                         Benachrichtigungen
-                                        {hasNewNotifications && (
-                                            <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />
-                                        )}
+                                        {hasNewNotifications && <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />}
                                     </Link>
 
-                                    {/* Nachrichten */}
+                                    {/* Chat */}
                                     <Link
                                         to={chatId ? `/messages/${chatId}` : "#"}
                                         className="flex items-center px-4 py-2 relative text-foreground"
-                                        onClick={(e) => {
+                                        onClick={e => {
                                             if (!chatId) {
                                                 e.preventDefault();
                                                 alert("Bitte zuerst anmelden, um Nachrichten zu sehen!");
@@ -255,18 +182,10 @@ const Navbar = forwardRef((props, ref) => {
                                     >
                                         <MessageSquare size={20} className="mr-2" />
                                         Nachrichten
-                                        {hasNewMessages && (
-                                            <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />
-                                        )}
+                                        {hasNewMessages && <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />}
                                     </Link>
 
-                                    {/* Profil */}
-                                    <Link to="/profile" className="flex items-center px-4 py-2 text-foreground">
-                                        <User size={20} className="mr-2" />
-                                        Profil
-                                    </Link>
-
-                                    {/* Logout */}
+                                    {/* Logout Button */}
                                     <button
                                         onClick={() => {
                                             logout();

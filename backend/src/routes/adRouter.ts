@@ -18,7 +18,8 @@ adRouter.get('/', authenticateJWT, async (_req: Request, res: Response) => {
 
 // Create a new ad
 adRouter.post('/', authenticateJWT, async (req: Request, res: Response) => {
-    const { title, description, price, owner_id, image_urls } = req.body;
+    const { title, description, price, image_urls } = req.body;
+    const owner_id = req.user!.id;
 
     if (!title || !owner_id || !description) {
         res.status(StatusCodes.BAD_REQUEST).json({ error: 'Title, description and owner ID are required' });

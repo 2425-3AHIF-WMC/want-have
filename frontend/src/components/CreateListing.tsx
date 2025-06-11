@@ -214,7 +214,8 @@ const CreateListing: React.FC = () => {
                 condition,
                 is_free: isFree,
                 negotiable: isFree ? false : negotiable,
-                image_urls: imageUrls
+                image_urls: imageUrls,
+                owner_id: user.id,
             };
 
             const res = await axios.post(

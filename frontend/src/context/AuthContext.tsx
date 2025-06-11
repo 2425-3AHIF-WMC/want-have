@@ -1,9 +1,5 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import axios from "axios";
-import {keycloak} from "../services/keycloak";
-import {initKeycloak} from "../services/keycloak";
-
+import { keycloak, initKeycloak } from "../services/keycloak";
 
 interface User {
     id?: string;
@@ -18,6 +14,7 @@ interface AuthContextType {
     login: () => void;
     logout: () => void;
 }
+
 interface KeycloakTokenParsed {
     sub?: string;
     preferred_username?: string;
@@ -25,7 +22,6 @@ interface KeycloakTokenParsed {
     name?: string;
     given_name?: string;
     family_name?: string;
-    // ggf. weitere Felder hinzufügen
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,11 +29,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
+        // Eventhandler vor init registrieren
+        keycloak.onAuthLogout = () => {
+            console.log("🚪 Keycloak logout event");
+            setUser(null);
+        };
+
         initKeycloak()
             .then(() => {
+                console.log("✅ keycloak", keycloak);
+                console.log("🪪 token:", keycloak.token);
+                console.log("🧾 tokenParsed:", keycloak.tokenParsed);
+
                 const tokenParsed = keycloak.tokenParsed as KeycloakTokenParsed | undefined;
                 if (!tokenParsed) {
                     setIsLoading(false);
@@ -52,26 +57,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 };
                 setUser(user);
                 setIsLoading(false);
-
-                // 👉 Hier auf Logout reagieren
-                keycloak.onAuthLogout = () => {
-                    console.log("🚪 Keycloak logout event");
-                    setUser(null);
-
-                };
             })
             .catch(() => {
                 setIsLoading(false);
             });
     }, []);
 
-
-
-
     const login = () => {
         keycloak.login();
     };
-
 
     const logout = () => {
         keycloak.logout({
@@ -79,7 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
         setUser(null);
     };
-
 
     return (
         <AuthContext.Provider value={{ user, isLoading, login, logout }}>
@@ -93,4 +86,3 @@ export const useAuth = () => {
     if (!ctx) throw new Error("useAuth must be used within AuthProvider");
     return ctx;
 };
-
