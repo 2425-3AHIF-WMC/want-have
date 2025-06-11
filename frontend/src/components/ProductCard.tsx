@@ -49,15 +49,28 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     const handleSendRequest = async () => {
         try {
+            // 1) Purchase-Request anlegen
             const res = await axios.post(
-                `${process.env.REACT_APP_API_URL}/requests/${id}`,
-                {
-                    // Backend liest userId aus JWT
-                },
-                { withCredentials: true }
+                `${process.env.REACT_APP_API_URL}/api/requests`,
+                { ad_id: id },                     // id kommt aus deinen Props
+                { withCredentials: true }          // JWT-Cookie mitsenden
             );
+
             if (res.status === 201) {
                 alert("Anfrage wurde erfolgreich gesendet!");
+
+                // 2) Notification an den Verkäufer senden
+                await axios.post(
+                    `${process.env.REACT_APP_API_URL}/api/notifications`,
+                    {
+                        user_id: seller.id,             // Verkäufer-ID aus deinen Props
+                        type: "purchase_request",       // beliebiger, definierter Typ
+                        related_id: res.data.id,        // ID der soeben erstellten Anfrage
+                        message: `Neue Anfrage zu deiner Anzeige "${title}"`,
+                    },
+                    { withCredentials: true }
+                );
+
             } else {
                 alert("Fehler beim Senden der Anfrage.");
             }

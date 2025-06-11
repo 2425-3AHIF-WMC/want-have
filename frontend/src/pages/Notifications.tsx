@@ -9,7 +9,8 @@ interface NotificationItem {
     type: string;
     message: string;
     created_at: string;
-    seen: boolean;
+    is_read: boolean;
+    related_id: string | null;
 }
 
 const Notifications: React.FC = () => {
@@ -77,9 +78,8 @@ const Notifications: React.FC = () => {
                         {notifications.map((notif) => (
                             <li
                                 key={notif.id}
-                                className={`p-4 border rounded-lg ${
-                                    notif.seen ? "bg-background border-border" : "bg-marktx-blue-50 border-border"
-                                }`}
+                                className={`p-4 border rounded-lg ${ notif.is_read ? "bg-background border-border" : "bg-marktx-blue-50 border-border" }`}
+
                             >
                                 <div className="flex justify-between">
                                     <p className="font-medium text-foreground">{notif.message}</p>

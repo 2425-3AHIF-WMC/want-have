@@ -11,6 +11,14 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import loginPage from "@/pages/LoginPage";
+interface NotificationItem {
+    id: string;
+    type: string;
+    message: string;
+    related_id: string | null;
+    created_at: string;
+    is_read: boolean;
+}
 
 const Navbar = forwardRef((props, ref) => {
     const { user, logout, login, isLoading } = useAuth();
@@ -73,11 +81,12 @@ const Navbar = forwardRef((props, ref) => {
             }
             try {
                 // 2) Neue Notifications: Anfrage an /notifications?onlyUnseen=true
-                const resNotifs = await axios.get<{ hasNew: boolean }>(
-                    `${process.env.REACT_APP_API_URL}/notifications?onlyUnseen=true`,
-                    { withCredentials: true }
-                );
-                setHasNewNotifications(resNotifs.data.hasNew);
+                    const resNotifs = await axios.get<NotificationItem[]>(
+                         `${process.env.REACT_APP_API_URL}/notifications`,
+                      { withCredentials: true }
+                     );
+                    const unseenExists = resNotifs.data.some((n) => !n.is_read);
+                + setHasNewNotifications(unseenExists);
             } catch (err) {
                 console.error("Fehler beim Laden neuer Notifications:", err);
                 setHasNewNotifications(false);
