@@ -2,10 +2,10 @@ import { Router, Request, Response } from "express";
 import { protect, KeycloakRequest } from "../middleware/keycloak";
 import jwt from "jsonwebtoken";
 import { StatusCodes } from "http-status-codes";
+import {authenticateJWT} from "../middleware/auth";
 
 export const loginRouter = Router();
 
-// 🔐 Keycloak Login Flow
 loginRouter.get("/login", (req: Request, res: Response) => {
     try {
         // Authenticate via Keycloak
@@ -50,7 +50,6 @@ loginRouter.get("/login", (req: Request, res: Response) => {
     }
 });
 
-// ℹ️ Public server status endpoint
 loginRouter.get("/", (req: Request, res: Response) => {
     res.status(StatusCodes.OK).json({
         status: "Server is running",
@@ -58,8 +57,7 @@ loginRouter.get("/", (req: Request, res: Response) => {
     });
 });
 
-// 👤 Get current user info (protected)
-loginRouter.get("/me", protect(), (req: Request, res: Response) => {
+loginRouter.get("/me", authenticateJWT, (req: Request, res: Response) => {
     try {
         const kreq = req as KeycloakRequest;
         const userInfo = kreq.kauth?.grant?.access_token?.content;

@@ -5,7 +5,6 @@ import pool from "../db/pool";
 
 export const imageRouter = Router();
 
-// Add image to ad
 imageRouter.post("/", authenticateJWT, async (req: Request, res: Response) => {
     const { ad_id, url } = req.body;
     const user_id = req.user!.id;

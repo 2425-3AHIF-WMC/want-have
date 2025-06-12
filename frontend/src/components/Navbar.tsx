@@ -85,10 +85,10 @@ const Navbar = forwardRef((props, ref) => {
                 if (!token) throw new Error("Kein gültiger Token vorhanden");
 
                 const [msgRes, notifRes] = await Promise.all([
-                    axios.get<{ hasNew: boolean }>(`${API_BASE_URL}/api/hasNewMessages`, {
+                    axios.get<{ hasNew: boolean }>(`${API_BASE_URL}/messages/hasNewMessages`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
-                    axios.get(`${API_BASE_URL}/notifications`, {
+                    axios.get(`${API_BASE_URL}/notifications/`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
                 ]);

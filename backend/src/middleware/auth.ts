@@ -18,7 +18,7 @@ export const authenticateJWT = (
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         res.status(StatusCodes.UNAUTHORIZED).json({ error: "Authorization header missing" });
-        return; // kein Rückgabewert!
+        return;
     }
 
     const token = authHeader.split(" ")[1];
