@@ -1,16 +1,30 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
-import { Bell, MessageSquare, Menu, X, User, Plus, LogIn } from "lucide-react";
+import React, {
+    useState,
+    useEffect,
+    forwardRef,
+    useImperativeHandle,
+    useRef,
+} from "react";
+import {
+    Bell,
+    MessageSquare,
+    Menu,
+    X,
+    User,
+    LogIn,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { keycloak } from "../services/keycloak"; // Keycloak importieren
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
 
 const Navbar = forwardRef((props, ref) => {
-    const { user, logout, login, isLoading } = useAuth();
+    const { user, logout, isLoading } = useAuth();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [chatId, setChatId] = useState<string | null>(null);
-
-    // Badges für neue Nachrichten & Benachrichtigungen
     const [hasNewMessages, setHasNewMessages] = useState(false);
     const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
@@ -20,52 +34,76 @@ const Navbar = forwardRef((props, ref) => {
     useImperativeHandle(ref, () => ({
         focusSearchInput() {
             searchInputRef.current?.focus();
-        }
+        },
     }));
 
-    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+    const toggleMenu = () => setIsMenuOpen((open) => !open);
 
     // Chat-ID vom Server holen (wenn eingeloggt)
     useEffect(() => {
-        if (user) {
-            axios
-                .get<{ chatId: string }>(`${process.env.REACT_APP_API_URL}/chats/me`, { withCredentials: true })
-                .then(res => setChatId(res.data.chatId))
-                .catch(() => setChatId(null));
-        } else {
+        if (!user) {
             setChatId(null);
+            return;
         }
+
+        const fetchChatId = async () => {
+            try {
+                // Token aktualisieren, falls kurz vor Ablauf
+                await keycloak.updateToken(30);
+                const token = keycloak.token;
+                if (!token) throw new Error("Kein gültiger Token vorhanden");
+
+                const res = await axios.get<{ chatId: string }>(`${API_BASE_URL}/chats/me`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    withCredentials: true,
+                });
+                setChatId(res.data.chatId);
+            } catch (err) {
+                console.error("Fehler beim Laden der ChatId:", err);
+                alert("Fehler beim Laden der Chat: Bitte melde dich neu an.");
+                setChatId(null);
+            }
+        };
+
+        fetchChatId();
     }, [user]);
 
     // Neue Nachrichten & Benachrichtigungen abfragen
     useEffect(() => {
-        async function fetchBadgeStatus() {
-            if (!user) {
-                setHasNewMessages(false);
-                setHasNewNotifications(false);
-                return;
-            }
-            try {
-                const resMessages = await axios.get<{ hasNew: boolean }>(
-                    `${process.env.REACT_APP_API_URL}/api/hasNewMessages`,
-                    { withCredentials: true }
-                );
-                setHasNewMessages(resMessages.data.hasNew);
-            } catch {
-                setHasNewMessages(false);
-            }
-            try {
-                const resNotifs = await axios.get(
-                    `${process.env.REACT_APP_API_URL}/notifications`,
-                    { withCredentials: true }
-                );
-                const unseenExists = resNotifs.data.some((n: any) => !n.is_read);
-                setHasNewNotifications(unseenExists);
-            } catch {
-                setHasNewNotifications(false);
-            }
+        if (!user) {
+            setHasNewMessages(false);
+            setHasNewNotifications(false);
+            return;
         }
-        fetchBadgeStatus();
+
+        const fetchBadges = async () => {
+            try {
+                await keycloak.updateToken(30);
+                const token = keycloak.token;
+                if (!token) throw new Error("Kein gültiger Token vorhanden");
+
+                const [msgRes, notifRes] = await Promise.all([
+                    axios.get<{ hasNew: boolean }>(`${API_BASE_URL}/api/hasNewMessages`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    axios.get(`${API_BASE_URL}/notifications`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                ]);
+
+                setHasNewMessages(msgRes.data.hasNew);
+                const unseenExists = notifRes.data.some((n: any) => !n.is_read);
+                setHasNewNotifications(unseenExists);
+            } catch (error) {
+                console.error("Fehler beim Laden der Badges:", error);
+                setHasNewMessages(false);
+                setHasNewNotifications(false);
+            }
+        };
+
+        fetchBadges();
     }, [user]);
 
     return (
@@ -82,24 +120,25 @@ const Navbar = forwardRef((props, ref) => {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center space-x-4">
                         {!user ? (
-                            // Vor Login: Nur Login Button
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => window.location.href = "http://localhost:3001/login"}
+                                onClick={() => (window.location.href = "http://localhost:3001/login")}
                                 aria-label="Login"
+                                disabled={isLoading}
                             >
                                 <LogIn size={20} className="text-foreground" />
                             </Button>
                         ) : (
-                            // Nach Login: Benachrichtigungen, Chat, Logout
                             <>
                                 {/* Benachrichtigungen */}
                                 <Button variant="ghost" size="icon" asChild>
                                     <Link to="/notifications" aria-label="Benachrichtigungen">
                                         <div className="relative">
                                             <Bell size={20} className="text-foreground" />
-                                            {hasNewNotifications && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />}
+                                            {hasNewNotifications && (
+                                                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />
+                                            )}
                                         </div>
                                     </Link>
                                 </Button>
@@ -107,9 +146,9 @@ const Navbar = forwardRef((props, ref) => {
                                 {/* Chat-Icon */}
                                 <Button variant="ghost" size="icon" asChild>
                                     <Link
-                                        to={chatId ? `/messages/${chatId}` : "#"}
+                                        to={chatId ? `/chat/${chatId}` : "#"}
                                         aria-label="Nachrichten"
-                                        onClick={e => {
+                                        onClick={(e) => {
                                             if (!chatId) {
                                                 e.preventDefault();
                                                 alert("Bitte zuerst anmelden, um Nachrichten zu sehen!");
@@ -118,7 +157,9 @@ const Navbar = forwardRef((props, ref) => {
                                     >
                                         <div className="relative">
                                             <MessageSquare size={20} className="text-foreground" />
-                                            {hasNewMessages && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />}
+                                            {hasNewMessages && (
+                                                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600" />
+                                            )}
                                         </div>
                                     </Link>
                                 </Button>
@@ -140,7 +181,11 @@ const Navbar = forwardRef((props, ref) => {
                     {/* Mobile Menu Button */}
                     <div className="md:hidden">
                         <Button variant="ghost" size="icon" onClick={toggleMenu}>
-                            {isMenuOpen ? <X size={24} className="text-foreground" /> : <Menu size={24} className="text-foreground" />}
+                            {isMenuOpen ? (
+                                <X size={24} className="text-foreground" />
+                            ) : (
+                                <Menu size={24} className="text-foreground" />
+                            )}
                         </Button>
                     </div>
                 </div>
@@ -166,14 +211,16 @@ const Navbar = forwardRef((props, ref) => {
                                     >
                                         <Bell size={20} className="mr-2" />
                                         Benachrichtigungen
-                                        {hasNewNotifications && <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />}
+                                        {hasNewNotifications && (
+                                            <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />
+                                        )}
                                     </Link>
 
                                     {/* Chat */}
                                     <Link
-                                        to={chatId ? `/messages/${chatId}` : "#"}
+                                        to={chatId ? `/chat/${chatId}` : "#"}
                                         className="flex items-center px-4 py-2 relative text-foreground"
-                                        onClick={e => {
+                                        onClick={(e) => {
                                             if (!chatId) {
                                                 e.preventDefault();
                                                 alert("Bitte zuerst anmelden, um Nachrichten zu sehen!");
@@ -182,7 +229,9 @@ const Navbar = forwardRef((props, ref) => {
                                     >
                                         <MessageSquare size={20} className="mr-2" />
                                         Nachrichten
-                                        {hasNewMessages && <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />}
+                                        {hasNewMessages && (
+                                            <span className="absolute top-3 right-4 block h-2 w-2 rounded-full bg-red-600" />
+                                        )}
                                     </Link>
 
                                     {/* Logout Button */}

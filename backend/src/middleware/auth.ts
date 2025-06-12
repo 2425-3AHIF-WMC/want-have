@@ -10,26 +10,39 @@ if (!secret) {
     throw new Error('JWT_SECRET is not defined in the environment variables.');
 }
 
-export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
-    const token = req.cookies.token;
+export const authenticateJWT = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): void => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        res.status(StatusCodes.UNAUTHORIZED).json({ error: "Authorization header missing" });
+        return; // kein Rückgabewert!
+    }
 
+    const token = authHeader.split(" ")[1];
     if (!token) {
-        res.status(StatusCodes.UNAUTHORIZED).json({ error: 'Authentication required' });
+        res.status(StatusCodes.UNAUTHORIZED).json({ error: "Token missing" });
         return;
     }
 
     try {
+        const decoded = jwt.decode(token);
+        console.log("Decoded token:", decoded);
+
         const user = jwt.verify(token, secret) as JwtPayload;
 
         req.user = {
-            id: user.id,
+            id: user.userId,
             username: user.username,
             email: user.email,
-            name: user.name
+            name: user.name,
         };
 
         next();
     } catch (err) {
-        res.status(StatusCodes.FORBIDDEN).json({ message: 'Invalid or expired token!' });
+        res.status(StatusCodes.FORBIDDEN).json({ message: "Invalid or expired token!" });
+        return;
     }
 };

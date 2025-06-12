@@ -13,7 +13,9 @@ interface AuthContextType {
     isLoading: boolean;
     login: () => void;
     logout: () => void;
+    getToken: () => string | undefined;
 }
+
 
 interface KeycloakTokenParsed {
     sub?: string;
@@ -39,10 +41,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         initKeycloak()
             .then(() => {
-                console.log("✅ keycloak", keycloak);
-                console.log("🪪 token:", keycloak.token);
-                console.log("🧾 tokenParsed:", keycloak.tokenParsed);
-
                 const tokenParsed = keycloak.tokenParsed as KeycloakTokenParsed | undefined;
                 if (!tokenParsed) {
                     setIsLoading(false);
@@ -74,8 +72,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
+    const getToken = () => keycloak.token;
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, logout, getToken }}>
             {children}
         </AuthContext.Provider>
     );
